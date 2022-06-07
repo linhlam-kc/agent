@@ -10,36 +10,37 @@ import (
 
 // EBNF for the scanner:
 //
-//   IDENT  = letter { letter | number }
-//   NULL   = "null"
-//   BOOL   = "true" | "false"
-//   NUMBER = [ digit ]
-//   FLOAT  = [ digit ] "." digit { digit } [ "e" ("+" | "-") digit { digit } ]
-//   STRING = '"' { character | escape_sequence } '"'
-//   OR     = "||"
-//   AND    = "&&"
-//   NOT    = "!"
-//   NEQ    = "!="
-//   ASSIGN = "="
-//   EQ     = "=="
-//   LT     = "<"
-//   LTE    = "<="
-//   GT     = ">"
-//   GTE    = ">="
-//   ADD    = "+"
-//   SUB    = "-"
-//   MUL    = "*"
-//   DIV    = "/"
-//   MOD    = "%"
-//   POW    = "^"
-//   LCURLY = "{"
-//   RCURLY = "}"
-//   LPAREN = "("
-//   RPAREN = ")"
-//   LBRACK = "["
-//   RBRACK = "]"
-//   COMMA  = ","
-//   DOT    = "."
+//   COMMENT = "#" { character } newline
+//   IDENT   = letter { letter | number }
+//   NULL    = "null"
+//   BOOL    = "true" | "false"
+//   NUMBER  = [ digit ]
+//   FLOAT   = [ digit ] "." digit { digit } [ "e" ("+" | "-") digit { digit } ]
+//   STRING  = '"' { character | escape_sequence } '"'
+//   OR      = "||"
+//   AND     = "&&"
+//   NOT     = "!"
+//   NEQ     = "!="
+//   ASSIGN  = "="
+//   EQ      = "=="
+//   LT      = "<"
+//   LTE     = "<="
+//   GT      = ">"
+//   GTE     = ">="
+//   ADD     = "+"
+//   SUB     = "-"
+//   MUL     = "*"
+//   DIV     = "/"
+//   MOD     = "%"
+//   POW     = "^"
+//   LCURLY  = "{"
+//   RCURLY  = "}"
+//   LPAREN  = "("
+//   RPAREN  = ")"
+//   LBRACK  = "["
+//   RBRACK  = "]"
+//   COMMA   = ","
+//   DOT     = "."
 
 // ErrorHandler is invoked whenever there is an error.
 type ErrorHandler func(pos token.Pos, msg string)
