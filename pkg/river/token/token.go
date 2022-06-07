@@ -54,6 +54,7 @@ var tokenNames = [...]string{
 
 	IDENT:  "IDENT",
 	NUMBER: "NUMBER",
+	FLOAT:  "FLOAT",
 	STRING: "STRING",
 	BOOL:   "BOOL",
 	NULL:   "NULL",
