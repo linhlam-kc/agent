@@ -14,7 +14,7 @@ import (
 //   IDENT   = letter { letter | number }
 //   NULL    = "null"
 //   BOOL    = "true" | "false"
-//   NUMBER  = [ digit ]
+//   NUMBER  = digit { digit }
 //   FLOAT   = [ digit ] "." digit { digit } [ "e" ("+" | "-") digit { digit } ]
 //   STRING  = '"' { character | escape_sequence } '"'
 //   OR      = "||"

@@ -224,9 +224,14 @@ func (p *parser) parseBlockName() *blockName {
 		p.next()
 	}
 
-	// Optional block label
-	if p.tok == token.STRING {
-		n.Label = p.lit
+	if p.tok != token.ASSIGN && p.tok != token.LCURLY {
+		// Allow for a string
+		if p.tok == token.STRING {
+			n.Label = p.lit
+		} else {
+			p.addError(fmt.Sprintf("expected block label, got %s", p.tok))
+		}
+
 		p.next()
 	}
 
