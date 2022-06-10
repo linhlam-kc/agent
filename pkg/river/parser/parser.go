@@ -153,14 +153,16 @@ func (p *parser) ParseStatement() ast.Stmt {
 	case token.ASSIGN: // Attribute
 		p.next() // Consume "="
 
-		if !blockName.ValidAttribute() {
+		if len(blockName.Fragments) != 1 {
 			p.errors.Add(&token.Error{
 				Position: p.file.PositionFor(blockName.Start),
 				Message:  "attribute names may only consist of a single identifier",
 			})
-
-			// We'll keep parsing to get more errors even though the attribute name
-			// is invalid.
+		} else if blockName.LabelPos != 0 {
+			p.errors.Add(&token.Error{
+				Position: p.file.PositionFor(blockName.LabelPos),
+				Message:  "attribute names may not have labels",
+			})
 		}
 
 		return &ast.AttributeStmt{
@@ -228,6 +230,7 @@ func (p *parser) parseBlockName() *blockName {
 		// Allow for a string
 		if p.tok == token.STRING {
 			n.Label = p.lit
+			n.LabelPos = p.pos
 		} else {
 			p.addError(fmt.Sprintf("expected block label, got %s", p.tok))
 		}
@@ -235,7 +238,6 @@ func (p *parser) parseBlockName() *blockName {
 		p.next()
 	}
 
-	n.End = p.pos
 	return &n
 }
 
@@ -243,7 +245,8 @@ type blockName struct {
 	Fragments []string // Name fragments (i.e., `a.b.c`)
 	Label     string   // Optional user label
 
-	Start, End token.Pos
+	Start    token.Pos
+	LabelPos token.Pos
 }
 
 // ValidAttribute returns true if the blockName can be used as an
@@ -488,8 +491,16 @@ func (p *parser) parsePrimaryExpr() ast.Expr {
 
 	p.addError(fmt.Sprintf("expected expression, got %s", p.tok))
 	res := &ast.LiteralExpr{Kind: token.NULL, Value: "null", ValuePos: p.pos}
-	p.next()
+	p.advanceSet(statementEnd) // Eat up the rest of the line
 	return res
+}
+
+var statementEnd = map[token.Token]struct{}{
+	token.TERMINATOR: {},
+	token.RPAREN:     {},
+	token.RCURLY:     {},
+	token.RBRACKET:   {},
+	token.COMMA:      {},
 }
 
 // parseExpressionList parses a list of expressions.

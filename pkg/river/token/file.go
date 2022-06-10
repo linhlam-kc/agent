@@ -1,6 +1,9 @@
 package token
 
-import "fmt"
+import (
+	"fmt"
+	"sort"
+)
 
 // Pos is a byte offset within an individual File.
 type Pos int
@@ -50,28 +53,48 @@ func (pos Position) String() string {
 // File holds position information for a specific file.
 type File struct {
 	filename string
-}
-
-// Name returns the name of the file.
-func (f *File) Name() string { return f.filename }
-
-// AddLine tracks a new line from a byte offset.
-func (f *File) AddLine(offset int) {
-	// TODO(rfratto): impl
-}
-
-// PositionFor returns a Position from an offset.
-func (f *File) PositionFor(p Pos) Position {
-	// TODO(rfratto): impl
-	return Position{
-		Filename: f.filename,
-		Offset:   int(p),
-	}
+	lines    []int // Byte offset of each line number (first element is always 0)
 }
 
 // NewFile creates a new File for storing position information.
 func NewFile(filename string) *File {
 	return &File{
 		filename: filename,
+		lines:    []int{0},
 	}
+}
+
+// Name returns the name of the file.
+func (f *File) Name() string { return f.filename }
+
+// AddLine tracks a new line from a byte offset. The line offset must be larger
+// than the offset for the previous line, otherwise the line offset is ignored.
+func (f *File) AddLine(offset int) {
+	lines := len(f.lines)
+	if lines == 0 || f.lines[lines-1] < offset {
+		f.lines = append(f.lines, offset)
+	}
+}
+
+// PositionFor returns a Position from an offset.
+func (f *File) PositionFor(p Pos) Position {
+	if p == 0 {
+		return Position{}
+	}
+
+	var line, column int
+	if i := searchInts(f.lines, int(p)); i >= 0 {
+		line, column = i+1, int(p)-f.lines[i]+1
+	}
+
+	return Position{
+		Filename: f.filename,
+		Offset:   int(p),
+		Line:     line,
+		Column:   column,
+	}
+}
+
+func searchInts(a []int, x int) int {
+	return sort.Search(len(a), func(i int) bool { return a[i] > x }) - 1
 }
