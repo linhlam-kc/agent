@@ -237,7 +237,7 @@ scanAgain:
 				s.insertTerm = false // consumed newline
 				return pos, token.TERMINATOR, "\n"
 			}
-			comment := s.scanComment()
+			comment := s.scanComment(false)
 			if s.mode&IncludeComments == 0 {
 				// Skip comment
 				s.insertTerm = false // newline consumed
@@ -261,9 +261,30 @@ scanAgain:
 		case '*':
 			tok = token.MUL
 		case '/':
-			// NOTE(rfratto): //- and /*-style comments currently aren't included in
-			// favor of only supporting #-style comments.
-			tok = token.DIV
+			if s.ch == '/' || s.ch == '*' {
+				// //- or /*-style comment.
+				//
+				// If we're expected to inject a terminator, we can only do so if our
+				// comment goes to the end of the line.
+				if s.insertTerm && s.findLineEnd() {
+					// Reset position to the beginning of the comment.
+					s.ch = '/'
+					s.offset = int(pos)
+					s.readOffset = s.offset + 1
+					s.insertTerm = false // consumed newline
+					return pos, token.TERMINATOR, "\n"
+				}
+				comment := s.scanComment(true)
+				if s.mode&IncludeComments == 0 {
+					// Skip comment
+					s.insertTerm = false // newline consumed
+					goto scanAgain
+				}
+				tok = token.COMMENT
+				lit = comment
+			} else {
+				tok = token.DIV
+			}
 
 		case '%':
 			tok = token.MOD
@@ -517,22 +538,110 @@ func digitVal(ch rune) int {
 	return 16 // larger than any legal digit val
 }
 
-func (s *Scanner) scanComment() string {
-	// The '#' was already consumed; s.ch is the next character in the comment
-	// sequence.
+// findLineEnd checks to see if a //- or /*-style comment runs to the end of
+// the line.
+//
+// findLineEnd is not used for #-syle comments, which always run to the end of
+// the line.
+func (s *Scanner) findLineEnd() bool {
+	// initial `/` already consumed
+
+	defer func(off int) {
+		// reset scanner state to where it was upon calling findLineEnd.
+		s.ch = '/'
+		s.offset = off
+		s.readOffset = off + 1
+		s.next() // consume initial start char again
+	}(s.offset - 1)
+
+	// read ahead until a newline, EOF, or non-comment token is found
+	for s.ch == '/' || s.ch == '*' {
+		if s.ch == '/' {
+			// //-style comments always contain newlines
+			return true
+		}
+		// We're looking at a /*-style comment; look for its newline
+		s.next()
+		for s.ch != eof {
+			ch := s.ch
+			if ch == '\n' {
+				return true
+			}
+			s.next()
+			if ch == '*' && s.ch == '/' {
+				s.next()
+				break
+			}
+		}
+		s.skipWhitespace() // s.insertSemi is set
+		if s.ch == eof || s.ch == '\n' {
+			return true
+		}
+		if s.ch != '/' {
+			// non-comment token
+			return false
+		}
+		s.next() // consume '/' at the end of the /* style comment
+	}
+
+	return false
+}
+
+func (s *Scanner) scanComment(slashComment bool) string {
+	// The initial character in the comment was already consumed.
+	//
+	// slashComment will be true when the comment is //- or /*-style.
 
 	var (
-		off   = s.offset - 1 // Offset of initial '#'
+		off   = s.offset - 1 // Offset of initial character
+		next  = -1           // Position following the comment (<0 = invalid)
 		numCR = 0
+
+		blockComment = false
 	)
 
-	for s.ch != '\n' && s.ch != eof {
-		if s.ch == '\r' {
+	if !slashComment || s.ch == '/' {
+		// #-style or //-style comment.
+		//
+		// The final '\n' is not considered part of the comment.
+		if s.ch == '/' {
+			s.next() // Consume second '/'
+		}
+
+		for s.ch != '\n' && s.ch != eof {
+			if s.ch == '\r' {
+				numCR++
+			}
+			s.next()
+		}
+
+		// If we're at an '\n', the position following the comment is afterwards.
+		next = s.offset
+		if s.ch == '\n' {
+			next++
+		}
+		goto exit
+	}
+
+	// /*-style comment
+	blockComment = true
+	s.next()
+	for s.ch != eof {
+		ch := s.ch
+		if ch == '\r' {
 			numCR++
 		}
 		s.next()
+		if ch == '*' && s.ch == '/' {
+			s.next()
+			next = s.offset
+			goto exit
+		}
 	}
 
+	s.onError(off, "block comment not terminated")
+
+exit:
 	lit := s.input[off:s.offset]
 
 	// On Windows, a single comment line may end in "\r\n". We want to remove the
@@ -543,18 +652,18 @@ func (s *Scanner) scanComment() string {
 	}
 
 	if numCR > 0 {
-		lit = stripCR(lit)
+		lit = stripCR(lit, blockComment)
 	}
 
 	return string(lit)
 }
 
-func stripCR(b []byte) []byte {
+func stripCR(b []byte, blockComment bool) []byte {
 	c := make([]byte, len(b))
 	i := 0
 
-	for _, ch := range b {
-		if ch != '\r' {
+	for j, ch := range b {
+		if ch != '\r' || blockComment && i > len("/*") && c[i-1] == '*' && j+1 < len(b) && b[j+1] == '/' {
 			c[i] = ch
 			i++
 		}
