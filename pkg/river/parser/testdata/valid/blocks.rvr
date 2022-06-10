@@ -1,0 +1,25 @@
+one_ident {
+  number_field = 1
+}
+
+one_ident "labeled" {
+  number_field = 1
+}
+
+multiple.idents {
+  number_field = 1
+}
+
+multiple.idents "labeled" {
+  number_field = 1
+}
+
+chain.of.idents {
+  number_field = 1
+}
+
+chain.of.idents "labeled" {
+  number_field = 1
+}
+
+one_ident_inline                 { number_field = 1 }

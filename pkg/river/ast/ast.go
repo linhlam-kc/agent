@@ -60,6 +60,18 @@ type ArrayExpr struct {
 	LBracket, RBracket token.Pos
 }
 
+// ObjectExpr is an object.
+type ObjectExpr struct {
+	Fields         []*ObjectField
+	LCurly, RCurly token.Pos
+}
+
+type ObjectField struct {
+	Name    string
+	NamePos token.Pos
+	Value   Expr
+}
+
 // IdentifierExpr refers to a value by name.
 type IdentifierExpr struct {
 	Name    string
@@ -111,6 +123,8 @@ var (
 	_ Node = (*BlockStmt)(nil)
 	_ Node = (*LiteralExpr)(nil)
 	_ Node = (*ArrayExpr)(nil)
+	_ Node = (*ObjectExpr)(nil)
+	_ Node = (*ObjectField)(nil)
 	_ Node = (*IdentifierExpr)(nil)
 	_ Node = (*AccessExpr)(nil)
 	_ Node = (*IndexExpr)(nil)
@@ -123,6 +137,7 @@ var (
 
 	_ Expr = (*LiteralExpr)(nil)
 	_ Expr = (*ArrayExpr)(nil)
+	_ Expr = (*ObjectExpr)(nil)
 	_ Expr = (*IdentifierExpr)(nil)
 	_ Expr = (*AccessExpr)(nil)
 	_ Expr = (*IndexExpr)(nil)
@@ -136,6 +151,8 @@ func (n *AttributeStmt) astNode()  {}
 func (n *BlockStmt) astNode()      {}
 func (n *LiteralExpr) astNode()    {}
 func (n *ArrayExpr) astNode()      {}
+func (n *ObjectExpr) astNode()     {}
+func (n *ObjectField) astNode()    {}
 func (n *IdentifierExpr) astNode() {}
 func (n *AccessExpr) astNode()     {}
 func (n *IndexExpr) astNode()      {}
@@ -148,6 +165,7 @@ func (n *BlockStmt) astStmt()     {}
 
 func (n *LiteralExpr) astExpr()    {}
 func (n *ArrayExpr) astExpr()      {}
+func (n *ObjectExpr) astExpr()     {}
 func (n *IdentifierExpr) astExpr() {}
 func (n *AccessExpr) astExpr()     {}
 func (n *IndexExpr) astExpr()      {}
@@ -174,6 +192,10 @@ func StartPos(n Node) token.Pos {
 		return n.ValuePos
 	case *ArrayExpr:
 		return n.LBracket
+	case *ObjectExpr:
+		return n.LCurly
+	case *ObjectField:
+		return n.NamePos
 	case *IdentifierExpr:
 		return n.NamePos
 	case *AccessExpr:
@@ -212,6 +234,10 @@ func EndPos(n Node) token.Pos {
 		return n.ValuePos + token.Pos(len(n.Value))
 	case *ArrayExpr:
 		return n.RBracket
+	case *ObjectExpr:
+		return n.RCurly
+	case *ObjectField:
+		return EndPos(n.Value)
 	case *IdentifierExpr:
 		return n.NamePos + token.Pos(len(n.Name))
 	case *AccessExpr:

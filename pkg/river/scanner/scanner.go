@@ -272,14 +272,17 @@ scanAgain:
 		case '{':
 			tok = token.LCURLY
 		case '}':
+			insertTerm = true
 			tok = token.RCURLY
 		case '(':
 			tok = token.LPAREN
 		case ')':
+			insertTerm = true
 			tok = token.RPAREN
 		case '[':
 			tok = token.LBRACKET
 		case ']':
+			insertTerm = true
 			tok = token.RBRACKET
 		case ',':
 			tok = token.COMMA
