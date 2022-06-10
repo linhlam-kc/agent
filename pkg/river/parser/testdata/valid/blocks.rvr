@@ -23,3 +23,14 @@ chain.of.idents "labeled" {
 }
 
 one_ident_inline                 { number_field = 1 }
+one_ident_inline "labeled"       { number_field = 1 }
+multiple.idents_inline           { number_field = 1 }
+multiple.idents_inline "labeled" { number_field = 1 }
+chain.of.idents                  { number_field = 1 }
+chain.of.idents "labeled"        { number_field = 1 }
+
+nested_block {
+  inner_block {
+    some_field = true
+  }
+}
