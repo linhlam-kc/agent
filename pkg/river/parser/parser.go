@@ -427,7 +427,7 @@ func isUnaryOp(t token.Token) bool {
 //
 //     PrimaryExpr = LiteralValue | ArrayExpr | ObjectExpr .
 //
-//     LiteralValue = identifier | string | number | bool | null |
+//     LiteralValue = identifier | string | number | float | bool | null |
 //                    "(" Expression ")" .
 //
 //     ArrayExpr = "[" [ ExpressionList ] "]" .
@@ -511,7 +511,6 @@ func (p *parser) parseExpressionList(until token.Token) []ast.Expr {
 // parseFieldList parses a list of fields in an object.
 //
 //    FieldList = Field { "," Field } [ "," ] .
-//    Field     = (string | identifier) "=" Expression .
 func (p *parser) parseFieldList(until token.Token) []*ast.ObjectField {
 	var fields []*ast.ObjectField
 

@@ -31,6 +31,10 @@ object_expr_multiline = {
 }
 object_expr_nested    = { field_a = { nested_field_a = 1 } }
 
+# Unary ops
+not_something = !true
+neg_number    = -5
+
 # Math binops
 binop_sum = 1 + 2
 binop_sub = 1 - 2

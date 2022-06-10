@@ -85,6 +85,9 @@ func TestParseExpressions(t *testing.T) {
 			field_b = 10,
 		}`,
 
+		"unary not": `!true`,
+		"unary neg": `-5`,
+
 		"math":         `1 + 2 - 3 * 4 / 5 % 6`,
 		"compare ops":  `1 == 2 != 3 < 4 > 5 <= 6 >= 7`,
 		"logical ops":  `true || false && true`,
