@@ -115,6 +115,13 @@ type BinaryExpr struct {
 	Left, Right Expr
 }
 
+// ParenExpr represents an expression wrapped in parenthesis.
+type ParenExpr struct {
+	LParen token.Pos
+	Inner  Expr
+	RParen token.Pos
+}
+
 // Type checks
 
 var (
@@ -131,6 +138,7 @@ var (
 	_ Node = (*CallExpr)(nil)
 	_ Node = (*UnaryExpr)(nil)
 	_ Node = (*BinaryExpr)(nil)
+	_ Node = (*ParenExpr)(nil)
 
 	_ Stmt = (*AttributeStmt)(nil)
 	_ Stmt = (*BlockStmt)(nil)
@@ -144,6 +152,7 @@ var (
 	_ Expr = (*CallExpr)(nil)
 	_ Expr = (*UnaryExpr)(nil)
 	_ Expr = (*BinaryExpr)(nil)
+	_ Expr = (*ParenExpr)(nil)
 )
 
 func (n *File) astNode()           {}
@@ -159,6 +168,7 @@ func (n *IndexExpr) astNode()      {}
 func (n *CallExpr) astNode()       {}
 func (n *UnaryExpr) astNode()      {}
 func (n *BinaryExpr) astNode()     {}
+func (n *ParenExpr) astNode()      {}
 
 func (n *AttributeStmt) astStmt() {}
 func (n *BlockStmt) astStmt()     {}
@@ -172,6 +182,7 @@ func (n *IndexExpr) astExpr()      {}
 func (n *CallExpr) astExpr()       {}
 func (n *UnaryExpr) astExpr()      {}
 func (n *BinaryExpr) astExpr()     {}
+func (n *ParenExpr) astExpr()      {}
 
 // StartPos returns the position of the first character belonging to a Node.
 func StartPos(n Node) token.Pos {
@@ -208,6 +219,8 @@ func StartPos(n Node) token.Pos {
 		return n.KindPos
 	case *BinaryExpr:
 		return StartPos(n.Left)
+	case *ParenExpr:
+		return n.LParen
 	default:
 		panic(fmt.Sprintf("Unrecognized Node type %T", n))
 	}
@@ -250,6 +263,8 @@ func EndPos(n Node) token.Pos {
 		return EndPos(n.Expression)
 	case *BinaryExpr:
 		return EndPos(n.Right)
+	case *ParenExpr:
+		return n.RParen
 	default:
 		panic(fmt.Sprintf("Unrecognized Node type %T", n))
 	}

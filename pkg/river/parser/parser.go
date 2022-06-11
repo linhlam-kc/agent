@@ -460,10 +460,15 @@ func (p *parser) parsePrimaryExpr() ast.Expr {
 		return res
 
 	case token.LPAREN:
-		p.expect(token.LPAREN)
+		lParen, _, _ := p.expect(token.LPAREN)
 		expr := p.ParseExpression()
-		p.expect(token.RPAREN)
-		return expr
+		rParen, _, _ := p.expect(token.RPAREN)
+
+		return &ast.ParenExpr{
+			LParen: lParen,
+			Inner:  expr,
+			RParen: rParen,
+		}
 
 	case token.LBRACKET:
 		var res ast.ArrayExpr
