@@ -200,5 +200,5 @@ func checkError(t *testing.T, src string, tok token.Token, pos int, lit, err str
 
 	assert.Equal(t, expectErrors, actualErrors, "Unexpected error count in src %q", src)
 	assert.Equal(t, err, latestError, "Unexpected error message in src %q", src)
-	assert.Equal(t, token.Pos(pos), latestPos, "Unexpected offset in src %q", src)
+	assert.Equal(t, pos, latestPos.Offset(), "Unexpected offset in src %q", src)
 }

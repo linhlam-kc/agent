@@ -31,9 +31,8 @@ type File struct {
 
 // AttributeStmt is a key-value pair being set in a body or a BlockStmt.
 type AttributeStmt struct {
-	Name    string
-	NamePos token.Pos
-	Value   Expr
+	Name  *IdentifierExpr
+	Value Expr
 }
 
 // BlockStmt is a declarative of a block inside of a body.
@@ -187,16 +186,16 @@ func (n *ParenExpr) astExpr()      {}
 // StartPos returns the position of the first character belonging to a Node.
 func StartPos(n Node) token.Pos {
 	if n == nil {
-		return 0
+		return token.NoPos
 	}
 	switch n := n.(type) {
 	case *File:
 		if len(n.Body) == 0 {
-			return 0
+			return token.NoPos
 		}
 		return StartPos(n.Body[0])
 	case *AttributeStmt:
-		return n.NamePos
+		return StartPos(n.Name)
 	case *BlockStmt:
 		return n.NamePos
 	case *LiteralExpr:
@@ -230,13 +229,13 @@ func StartPos(n Node) token.Pos {
 // Node.
 func EndPos(n Node) token.Pos {
 	if n == nil {
-		return 0
+		return token.NoPos
 	}
 
 	switch n := n.(type) {
 	case *File:
 		if len(n.Body) == 0 {
-			return 0
+			return token.NoPos
 		}
 		return EndPos(n.Body[len(n.Body)-1])
 	case *AttributeStmt:
@@ -244,7 +243,7 @@ func EndPos(n Node) token.Pos {
 	case *BlockStmt:
 		return n.RCurly
 	case *LiteralExpr:
-		return n.ValuePos + token.Pos(len(n.Value))
+		return n.ValuePos.Add(len(n.Value))
 	case *ArrayExpr:
 		return n.RBracket
 	case *ObjectExpr:
@@ -252,7 +251,7 @@ func EndPos(n Node) token.Pos {
 	case *ObjectField:
 		return EndPos(n.Value)
 	case *IdentifierExpr:
-		return n.NamePos + token.Pos(len(n.Name))
+		return n.NamePos.Add(len(n.Name))
 	case *AccessExpr:
 		return EndPos(n.Value)
 	case *IndexExpr:

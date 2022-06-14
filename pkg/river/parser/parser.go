@@ -158,7 +158,7 @@ func (p *parser) ParseStatement() ast.Stmt {
 				Position: p.file.PositionFor(blockName.Start),
 				Message:  "attribute names may only consist of a single identifier",
 			})
-		} else if blockName.LabelPos != 0 {
+		} else if blockName.LabelPos != token.NoPos {
 			p.errors.Add(&token.Error{
 				Position: p.file.PositionFor(blockName.LabelPos),
 				Message:  "attribute names may not have labels",
@@ -166,9 +166,11 @@ func (p *parser) ParseStatement() ast.Stmt {
 		}
 
 		return &ast.AttributeStmt{
-			Name:    blockName.Fragments[0],
-			NamePos: blockName.Start,
-			Value:   p.ParseExpression(),
+			Name: &ast.IdentifierExpr{
+				Name:    blockName.Fragments[0],
+				NamePos: blockName.Start,
+			},
+			Value: p.ParseExpression(),
 		}
 
 	case token.LCURLY: // Block

@@ -30,11 +30,10 @@ var errRx = regexp.MustCompile(`^/\* *ERROR *(HERE)? *"([^"]*)" *\*/$`)
 
 // expectedErrors collects the regular expressions of ERROR comments found in
 // files and returns them as a map of error positions to error messages.
-func expectedErrors(filename string, src []byte) map[token.Pos]string {
+func expectedErrors(file *token.File, src []byte) map[token.Pos]string {
 	errors := make(map[token.Pos]string)
 
-	f := token.NewFile(filename)
-	s := scanner.New(f, src, nil, scanner.IncludeComments)
+	s := scanner.New(file, src, nil, scanner.IncludeComments)
 
 	var (
 		prev token.Pos // Position of last non-comment, non-terminator token
@@ -68,7 +67,7 @@ func expectedErrors(filename string, src []byte) map[token.Pos]string {
 			} else {
 				l = len(tok.String())
 			}
-			here = prev + token.Pos(l)
+			here = prev.Add(l)
 		}
 	}
 }
@@ -87,7 +86,8 @@ func compareErrors(t *testing.T, file *token.File, expected map[token.Pos]string
 	t.Helper()
 
 	for _, checkError := range found {
-		pos := token.Pos(checkError.Position.Offset)
+		pos := file.Pos(checkError.Position.Offset)
+
 		if msg, found := expected[pos]; found {
 			// We expect a message at pos; check if it matches
 			rx, err := regexp.Compile(msg)
@@ -103,7 +103,7 @@ func compareErrors(t *testing.T, file *token.File, expected map[token.Pos]string
 		} else {
 			assert.Fail(t,
 				"Unexpected error",
-				"%s: unexpected error: %s", checkError.Position.String(), checkError.Message,
+				"unexpected error: %s: %s", checkError.Position.String(), checkError.Message,
 			)
 		}
 	}
@@ -142,6 +142,6 @@ func checkErrors(t *testing.T, filename string) {
 	p := newParser(filename, src)
 	_ = p.ParseFile()
 
-	expected := expectedErrors(filename, src)
+	expected := expectedErrors(p.file, src)
 	compareErrors(t, p.file, expected, p.errors)
 }

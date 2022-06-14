@@ -5,8 +5,33 @@ import (
 	"sort"
 )
 
-// Pos is a byte offset within an individual File.
-type Pos int
+// NoPos is the zero value for Pos. It has no file or line information
+// associated with it, and NoPos.IsValid is false.
+var NoPos = Pos{}
+
+// Pos is a compact representation of a position within a file. It can be
+// converted into a Position for a more convenient, but larger, representation.
+type Pos struct {
+	file *File
+	off  int
+}
+
+// File returns the file used by the Pos.
+func (p Pos) File() *File { return p.file }
+
+// Add creates a new Pos relative to p.
+func (p Pos) Add(n int) Pos {
+	return Pos{
+		file: p.file,
+		off:  p.off + n,
+	}
+}
+
+// Offset returns the offset information associated with Pos.
+func (p Pos) Offset() int { return p.off }
+
+// IsValid reports whether the Pos is valid.
+func (p Pos) IsValid() bool { return p != NoPos }
 
 // Position holds full position information for a location within an individual
 // file.
@@ -64,6 +89,14 @@ func NewFile(filename string) *File {
 	}
 }
 
+// Pos returns a Pos from a byte offset. off must be >= 0.
+func (f *File) Pos(off int) Pos {
+	if off < 0 {
+		panic("Pos: illegal offset")
+	}
+	return Pos{file: f, off: off}
+}
+
 // Name returns the name of the file.
 func (f *File) Name() string { return f.filename }
 
@@ -78,18 +111,18 @@ func (f *File) AddLine(offset int) {
 
 // PositionFor returns a Position from an offset.
 func (f *File) PositionFor(p Pos) Position {
-	if p == 0 {
+	if p == NoPos {
 		return Position{}
 	}
 
 	var line, column int
-	if i := searchInts(f.lines, int(p)); i >= 0 {
-		line, column = i+1, int(p)-f.lines[i]+1
+	if i := searchInts(f.lines, int(p.off)); i >= 0 {
+		line, column = i+1, int(p.off)-f.lines[i]+1
 	}
 
 	return Position{
 		Filename: f.filename,
-		Offset:   int(p),
+		Offset:   int(p.off),
 		Line:     line,
 		Column:   column,
 	}

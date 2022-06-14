@@ -135,7 +135,7 @@ func (s *Scanner) next() {
 
 func (s *Scanner) onError(offset int, msg string) {
 	if s.err != nil {
-		s.err(token.Pos(offset), msg)
+		s.err(s.file.Pos(offset), msg)
 	}
 	s.numErrors++
 }
@@ -168,7 +168,7 @@ scanAgain:
 	s.skipWhitespace()
 
 	// Current token start
-	pos = token.Pos(s.offset)
+	pos = s.file.Pos(s.offset)
 
 	// Determine token value
 	insertTerm := false
@@ -232,7 +232,7 @@ scanAgain:
 				// We're expecting a terminator. Reset the scanner back to the start of
 				// the comment and force emit a terminator.
 				s.ch = '#'
-				s.offset = int(pos)
+				s.offset = pos.Offset()
 				s.readOffset = s.offset + 1
 				s.insertTerm = false // consumed newline
 				return pos, token.TERMINATOR, "\n"
@@ -269,7 +269,7 @@ scanAgain:
 				if s.insertTerm && s.findLineEnd() {
 					// Reset position to the beginning of the comment.
 					s.ch = '/'
-					s.offset = int(pos)
+					s.offset = pos.Offset()
 					s.readOffset = s.offset + 1
 					s.insertTerm = false // consumed newline
 					return pos, token.TERMINATOR, "\n"
@@ -313,7 +313,7 @@ scanAgain:
 		default:
 			// s.next() reports invalid BOMs so we don't repeat the error
 			if ch != bom {
-				s.onError(int(pos), fmt.Sprintf("illegal character %#U", ch))
+				s.onError(pos.Offset(), fmt.Sprintf("illegal character %#U", ch))
 			}
 			insertTerm = s.insertTerm // Preserve previous s.insertTerm
 			tok = token.ILLEGAL

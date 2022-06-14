@@ -3,11 +3,11 @@
 field = [
   0,
   1,
-  2/* ERROR HERE "missing ','" */
+  2/* ERROR HERE "missing ',' in expression list" */
 ]
 
 obj = {
   field_a = 0,
   field_b = 1,
-  field_c = 2/* ERROR HERE "missing ','" */
+  field_c = 2/* ERROR HERE "missing ',' in field list" */
 }
