@@ -1,0 +1,17 @@
+attr_1 = 15
+attr_2 = 30 * 2 + 5
+attr_3 = field.access * 2
+
+example.block {
+	block_attr = 777
+}
+
+example.block "labeled" {
+	block_attr = 777
+}
+
+empty.block {
+}
+
+empty.block "labeled" {
+}

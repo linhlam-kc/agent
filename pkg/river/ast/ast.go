@@ -68,6 +68,7 @@ type ObjectExpr struct {
 type ObjectField struct {
 	Name    string
 	NamePos token.Pos
+	Quoted  bool // Whether the name was wrapped in quotes
 	Value   Expr
 }
 

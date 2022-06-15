@@ -19,6 +19,9 @@ type Pos struct {
 // File returns the file used by the Pos.
 func (p Pos) File() *File { return p.file }
 
+// Position converts Pos into a Position.
+func (p Pos) Position() Position { return p.file.PositionFor(p) }
+
 // Add creates a new Pos relative to p.
 func (p Pos) Add(n int) Pos {
 	return Pos{

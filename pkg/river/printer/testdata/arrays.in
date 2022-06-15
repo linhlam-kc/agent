@@ -1,0 +1,11 @@
+oneline = [0,1,2,3]
+multiline = [0,
+1,2,3]
+multiline_trailing = [
+0,
+1,
+2,
+]
+other = [
+0,
+1, 2,]

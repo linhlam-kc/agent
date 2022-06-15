@@ -231,7 +231,8 @@ func (p *parser) parseBlockName() *blockName {
 	if p.tok != token.ASSIGN && p.tok != token.LCURLY {
 		// Allow for a string
 		if p.tok == token.STRING {
-			n.Label = p.lit
+
+			n.Label = p.lit[1 : len(p.lit)-1] // Strip quotes from label
 			n.LabelPos = p.pos
 		} else {
 			p.addError(fmt.Sprintf("expected block label, got %s", p.tok))
@@ -570,6 +571,7 @@ func (p *parser) parseField() *ast.ObjectField {
 		// If the field name is from a string literal, we need to remove the
 		// surrounding quotes from the name.
 		field.Name = field.Name[1 : len(field.Name)-1]
+		field.Quoted = true // Mark that it was surrounded in quotes
 	}
 	p.next() // Consume field name
 
