@@ -116,9 +116,11 @@ func TestVM_Evaluate(t *testing.T) {
 
 		// Access
 		{`{ a = 15 }.a`, int(15)},
+		{`{ a = { b = 12 } }.a.b`, int(12)},
 
 		// Indexing
 		{`[0, 1, 2][1]`, int(1)},
+		{`[[1,2,3]][0][2]`, int(3)},
 		{`[true, false][0]`, bool(true)},
 
 		// Paren
