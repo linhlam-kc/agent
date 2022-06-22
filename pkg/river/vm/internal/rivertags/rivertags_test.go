@@ -73,7 +73,19 @@ func Test_getTaggedFields_ReusedField(t *testing.T) {
 		Reused string `river:"field1,attr,optional"`
 	}
 
-	expect := "river: field1 already used in struct rivertags.testBlockStruct by field First"
+	expect := "river: field1 already used by rivertags.testBlockStruct.First"
+	require.PanicsWithValue(t, expect, func() {
+		_ = Get(reflect.TypeOf(testBlockStruct{}))
+	})
+}
+
+func Test_getTaggedFields_MultipleLabelFields(t *testing.T) {
+	type testBlockStruct struct {
+		Label1 string `river:",label"`
+		Label2 string `river:",label"`
+	}
+
+	expect := "river: label field already used by rivertags.testBlockStruct.Label1"
 	require.PanicsWithValue(t, expect, func() {
 		_ = Get(reflect.TypeOf(testBlockStruct{}))
 	})

@@ -90,7 +90,10 @@ func Get(ty reflect.Type) Fields {
 		panic(fmt.Sprintf("rivertags: Get requires struct kind, got %s", ty.Kind()))
 	}
 
-	usedNames := make(map[string]int)
+	var (
+		usedNames      = make(map[string]int)
+		usedLabelField = -1
+	)
 
 	var res Fields
 
@@ -108,7 +111,7 @@ func Get(ty reflect.Type) Fields {
 
 		frags := strings.SplitN(tag, ",", 2)
 		if len(frags) == 0 {
-			panic(fmt.Sprintf("river: unsupported empty tag on struct %s, field %s", ty.String(), field.Name))
+			panic(fmt.Sprintf("river: unsupported empty tag in %s.%s", ty.String(), field.Name))
 		}
 
 		tf := Field{
@@ -116,8 +119,8 @@ func Get(ty reflect.Type) Fields {
 			Index: i,
 		}
 
-		if first, used := usedNames[tf.Name]; used {
-			panic(fmt.Sprintf("river: %s already used in struct %s by field %s", tf.Name, ty.String(), ty.Field(first).Name))
+		if first, used := usedNames[tf.Name]; used && tf.Name != "" {
+			panic(fmt.Sprintf("river: %s already used by %s.%s", tf.Name, ty.String(), ty.Field(first).Name))
 		}
 		usedNames[tf.Name] = i
 
@@ -138,8 +141,19 @@ func Get(ty reflect.Type) Fields {
 			case "label":
 				tf.flags = flagLabel
 			default:
-				panic(fmt.Sprintf("value: unsupported river tag format %q on struct %s, field %s", tag, ty.String(), field.Name))
+				panic(fmt.Sprintf("river: unsupported river tag format %q on %s.%s", tag, ty.String(), field.Name))
 			}
+		}
+
+		if tf.IsLabel() {
+			if usedLabelField >= 0 {
+				panic(fmt.Sprintf("river: label field already used by %s.%s", ty.String(), ty.Field(usedLabelField).Name))
+			}
+			usedLabelField = i
+		}
+
+		if tf.Name == "" && (tf.IsBlock() || tf.IsAttr() || tf.IsKey()) {
+			panic(fmt.Sprintf("river: non-empty field name required in %s.%s", ty.String(), ty.Field(i).Name))
 		}
 
 		res = append(res, tf)
