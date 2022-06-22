@@ -10,7 +10,7 @@ import (
 	"github.com/zclconf/go-cty/cty/set"
 )
 
-// ToCtyValue produces a cty.Value from a Go value. The result will conform
+// Encode produces a cty.Value from a Go value. The result will conform
 // to the given type, or an error will be returned if this is not possible.
 //
 // The target type serves as a hint to resolve ambiguities in the mapping.
@@ -22,56 +22,56 @@ import (
 // The audience of this function is assumed to be the developers of Go code
 // that is integrating with cty, and thus the error messages it returns are
 // presented from Go's perspective. These messages are thus not appropriate
-// for display to end-users. An error returned from ToCtyValue represents a
+// for display to end-users. An error returned from Encode represents a
 // bug in the calling program, not user error.
-func ToCtyValue(val interface{}, ty cty.Type) (cty.Value, error) {
+func Encode(val interface{}, ty cty.Type) (cty.Value, error) {
 	// 'path' starts off as empty but will grow for each level of recursive
 	// call we make, so by the time toCtyValue returns it is likely to have
 	// unused capacity on the end of it, depending on how deeply-recursive
 	// the given Type is.
 	path := make(cty.Path, 0)
-	return toCtyValue(reflect.ValueOf(val), ty, path)
+	return encode(reflect.ValueOf(val), ty, path)
 }
 
-func toCtyValue(val reflect.Value, ty cty.Type, path cty.Path) (cty.Value, error) {
+func encode(val reflect.Value, ty cty.Type, path cty.Path) (cty.Value, error) {
 	if val != (reflect.Value{}) && val.Type().AssignableTo(valueType) {
 		// If the source value is a cty.Value then we'll try to just pass
 		// through to the target type directly.
-		return toCtyPassthrough(val, ty, path)
+		return encodePassthruogh(val, ty, path)
 	}
 
 	switch ty {
 	case cty.Bool:
-		return toCtyBool(val, path)
+		return encodeBool(val, path)
 	case cty.Number:
-		return toCtyNumber(val, path)
+		return encodeNumber(val, path)
 	case cty.String:
-		return toCtyString(val, path)
+		return encodeString(val, path)
 	case cty.DynamicPseudoType:
-		return toCtyDynamic(val, path)
+		return encodeDynamic(val, path)
 	}
 
 	switch {
 	case ty.IsListType():
-		return toCtyList(val, ty.ElementType(), path)
+		return encodeList(val, ty.ElementType(), path)
 	case ty.IsMapType():
-		return toCtyMap(val, ty.ElementType(), path)
+		return encodeMap(val, ty.ElementType(), path)
 	case ty.IsSetType():
-		return toCtySet(val, ty.ElementType(), path)
+		return encodeSet(val, ty.ElementType(), path)
 	case ty.IsObjectType():
-		return toCtyObject(val, ty.AttributeTypes(), path)
+		return encodeObject(val, ty.AttributeTypes(), path)
 	case ty.IsTupleType():
-		return toCtyTuple(val, ty.TupleElementTypes(), path)
+		return encodeTuple(val, ty.TupleElementTypes(), path)
 	case ty.IsCapsuleType():
-		return toCtyCapsule(val, ty, path)
+		return encodeCapsule(val, ty, path)
 	}
 
 	// We should never fall out here
 	return cty.NilVal, path.NewErrorf("unsupported target type %#v", ty)
 }
 
-func toCtyBool(val reflect.Value, path cty.Path) (cty.Value, error) {
-	if val = toCtyUnwrapPointer(val); !val.IsValid() {
+func encodeBool(val reflect.Value, path cty.Path) (cty.Value, error) {
+	if val = unwrapPointer(val); !val.IsValid() {
 		return cty.NullVal(cty.Bool), nil
 	}
 
@@ -87,8 +87,8 @@ func toCtyBool(val reflect.Value, path cty.Path) (cty.Value, error) {
 
 }
 
-func toCtyNumber(val reflect.Value, path cty.Path) (cty.Value, error) {
-	if val = toCtyUnwrapPointer(val); !val.IsValid() {
+func encodeNumber(val reflect.Value, path cty.Path) (cty.Value, error) {
+	if val = unwrapPointer(val); !val.IsValid() {
 		return cty.NullVal(cty.Number), nil
 	}
 
@@ -123,8 +123,8 @@ func toCtyNumber(val reflect.Value, path cty.Path) (cty.Value, error) {
 
 }
 
-func toCtyString(val reflect.Value, path cty.Path) (cty.Value, error) {
-	if val = toCtyUnwrapPointer(val); !val.IsValid() {
+func encodeString(val reflect.Value, path cty.Path) (cty.Value, error) {
+	if val = unwrapPointer(val); !val.IsValid() {
 		return cty.NullVal(cty.String), nil
 	}
 
@@ -140,8 +140,8 @@ func toCtyString(val reflect.Value, path cty.Path) (cty.Value, error) {
 
 }
 
-func toCtyList(val reflect.Value, ety cty.Type, path cty.Path) (cty.Value, error) {
-	if val = toCtyUnwrapPointer(val); !val.IsValid() {
+func encodeList(val reflect.Value, ety cty.Type, path cty.Path) (cty.Value, error) {
+	if val = unwrapPointer(val); !val.IsValid() {
 		return cty.NullVal(cty.List(ety)), nil
 	}
 
@@ -167,7 +167,7 @@ func toCtyList(val reflect.Value, ety cty.Type, path cty.Path) (cty.Value, error
 			path[len(path)-1] = cty.IndexStep{
 				Key: cty.NumberIntVal(int64(i)),
 			}
-			vals[i], err = toCtyValue(val.Index(i), ety, path)
+			vals[i], err = encode(val.Index(i), ety, path)
 			if err != nil {
 				return cty.NilVal, err
 			}
@@ -185,8 +185,8 @@ func toCtyList(val reflect.Value, ety cty.Type, path cty.Path) (cty.Value, error
 	}
 }
 
-func toCtyMap(val reflect.Value, ety cty.Type, path cty.Path) (cty.Value, error) {
-	if val = toCtyUnwrapPointer(val); !val.IsValid() {
+func encodeMap(val reflect.Value, ety cty.Type, path cty.Path) (cty.Value, error) {
+	if val = unwrapPointer(val); !val.IsValid() {
 		return cty.NullVal(cty.Map(ety)), nil
 	}
 
@@ -217,7 +217,7 @@ func toCtyMap(val reflect.Value, ety cty.Type, path cty.Path) (cty.Value, error)
 			path[len(path)-1] = cty.IndexStep{
 				Key: cty.StringVal(k),
 			}
-			vals[k], err = toCtyValue(val.MapIndex(reflect.ValueOf(k)), ety, path)
+			vals[k], err = encode(val.MapIndex(reflect.ValueOf(k)), ety, path)
 			if err != nil {
 				return cty.NilVal, err
 			}
@@ -235,8 +235,8 @@ func toCtyMap(val reflect.Value, ety cty.Type, path cty.Path) (cty.Value, error)
 	}
 }
 
-func toCtySet(val reflect.Value, ety cty.Type, path cty.Path) (cty.Value, error) {
-	if val = toCtyUnwrapPointer(val); !val.IsValid() {
+func encodeSet(val reflect.Value, ety cty.Type, path cty.Path) (cty.Value, error) {
+	if val = unwrapPointer(val); !val.IsValid() {
 		return cty.NullVal(cty.Set(ety)), nil
 	}
 
@@ -257,7 +257,7 @@ func toCtySet(val reflect.Value, ety cty.Type, path cty.Path) (cty.Value, error)
 		vals = make([]cty.Value, val.Len())
 		for i := range vals {
 			var err error
-			vals[i], err = toCtyValue(val.Index(i), ety, path)
+			vals[i], err = encode(val.Index(i), ety, path)
 			if err != nil {
 				return cty.NilVal, err
 			}
@@ -279,7 +279,7 @@ func toCtySet(val reflect.Value, ety cty.Type, path cty.Path) (cty.Value, error)
 		vals = make([]cty.Value, len(inVals))
 		for i := range inVals {
 			var err error
-			vals[i], err = toCtyValue(reflect.ValueOf(inVals[i]), ety, path)
+			vals[i], err = encode(reflect.ValueOf(inVals[i]), ety, path)
 			if err != nil {
 				return cty.NilVal, err
 			}
@@ -293,8 +293,8 @@ func toCtySet(val reflect.Value, ety cty.Type, path cty.Path) (cty.Value, error)
 	return cty.SetVal(vals), nil
 }
 
-func toCtyObject(val reflect.Value, attrTypes map[string]cty.Type, path cty.Path) (cty.Value, error) {
-	if val = toCtyUnwrapPointer(val); !val.IsValid() {
+func encodeObject(val reflect.Value, attrTypes map[string]cty.Type, path cty.Path) (cty.Value, error) {
+	if val = unwrapPointer(val); !val.IsValid() {
 		return cty.NullVal(cty.Object(attrTypes)), nil
 	}
 
@@ -335,7 +335,7 @@ func toCtyObject(val reflect.Value, attrTypes map[string]cty.Type, path cty.Path
 				continue
 			}
 
-			vals[k], err = toCtyValue(val.MapIndex(reflect.ValueOf(k)), at, path)
+			vals[k], err = encode(val.MapIndex(reflect.ValueOf(k)), at, path)
 			if err != nil {
 				return cty.NilVal, err
 			}
@@ -366,7 +366,7 @@ func toCtyObject(val reflect.Value, attrTypes map[string]cty.Type, path cty.Path
 
 			if f, ok := attrFields.Get(k); ok {
 				var err error
-				vals[k], err = toCtyValue(val.Field(f.Index), at, path)
+				vals[k], err = encode(val.Field(f.Index), at, path)
 				if err != nil {
 					return cty.NilVal, err
 				}
@@ -387,8 +387,8 @@ func toCtyObject(val reflect.Value, attrTypes map[string]cty.Type, path cty.Path
 	}
 }
 
-func toCtyTuple(val reflect.Value, elemTypes []cty.Type, path cty.Path) (cty.Value, error) {
-	if val = toCtyUnwrapPointer(val); !val.IsValid() {
+func encodeTuple(val reflect.Value, elemTypes []cty.Type, path cty.Path) (cty.Value, error) {
+	if val = unwrapPointer(val); !val.IsValid() {
 		return cty.NullVal(cty.Tuple(elemTypes)), nil
 	}
 
@@ -419,7 +419,7 @@ func toCtyTuple(val reflect.Value, elemTypes []cty.Type, path cty.Path) (cty.Val
 				Key: cty.NumberIntVal(int64(i)),
 			}
 
-			vals[i], err = toCtyValue(val.Index(i), ety, path)
+			vals[i], err = encode(val.Index(i), ety, path)
 			if err != nil {
 				return cty.NilVal, err
 			}
@@ -453,7 +453,7 @@ func toCtyTuple(val reflect.Value, elemTypes []cty.Type, path cty.Path) (cty.Val
 				Key: cty.NumberIntVal(int64(i)),
 			}
 
-			vals[i], err = toCtyValue(val.Field(i), ety, path)
+			vals[i], err = encode(val.Field(i), ety, path)
 			if err != nil {
 				return cty.NilVal, err
 			}
@@ -471,8 +471,8 @@ func toCtyTuple(val reflect.Value, elemTypes []cty.Type, path cty.Path) (cty.Val
 	}
 }
 
-func toCtyCapsule(val reflect.Value, capsuleType cty.Type, path cty.Path) (cty.Value, error) {
-	if val = toCtyUnwrapPointer(val); !val.IsValid() {
+func encodeCapsule(val reflect.Value, capsuleType cty.Type, path cty.Path) (cty.Value, error) {
+	if val = unwrapPointer(val); !val.IsValid() {
 		return cty.NullVal(capsuleType), nil
 	}
 
@@ -491,8 +491,8 @@ func toCtyCapsule(val reflect.Value, capsuleType cty.Type, path cty.Path) (cty.V
 	return cty.CapsuleVal(capsuleType, val.Interface()), nil
 }
 
-func toCtyDynamic(val reflect.Value, path cty.Path) (cty.Value, error) {
-	if val = toCtyUnwrapPointer(val); !val.IsValid() {
+func encodeDynamic(val reflect.Value, path cty.Path) (cty.Value, error) {
+	if val = unwrapPointer(val); !val.IsValid() {
 		return cty.NullVal(cty.DynamicPseudoType), nil
 	}
 
@@ -512,8 +512,8 @@ func toCtyDynamic(val reflect.Value, path cty.Path) (cty.Value, error) {
 
 }
 
-func toCtyPassthrough(wrappedVal reflect.Value, wantTy cty.Type, path cty.Path) (cty.Value, error) {
-	if wrappedVal = toCtyUnwrapPointer(wrappedVal); !wrappedVal.IsValid() {
+func encodePassthruogh(wrappedVal reflect.Value, wantTy cty.Type, path cty.Path) (cty.Value, error) {
+	if wrappedVal = unwrapPointer(wrappedVal); !wrappedVal.IsValid() {
 		return cty.NullVal(wantTy), nil
 	}
 
@@ -526,7 +526,7 @@ func toCtyPassthrough(wrappedVal reflect.Value, wantTy cty.Type, path cty.Path) 
 	return val, nil
 }
 
-// toCtyUnwrapPointer is a helper for dealing with Go pointers. It has three
+// unwrapPointer is a helper for dealing with Go pointers. It has three
 // possible outcomes:
 //
 // - Given value isn't a pointer, so it's just returned as-is.
@@ -536,7 +536,7 @@ func toCtyPassthrough(wrappedVal reflect.Value, wantTy cty.Type, path cty.Path) 
 //
 // For nested pointer types, like **int, they are all dereferenced in turn
 // until a non-pointer value is found, or until a nil pointer is encountered.
-func toCtyUnwrapPointer(val reflect.Value) reflect.Value {
+func unwrapPointer(val reflect.Value) reflect.Value {
 	for val.Kind() == reflect.Ptr || val.Kind() == reflect.Interface {
 		if val.IsNil() {
 			return reflect.Value{}

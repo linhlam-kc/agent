@@ -348,7 +348,7 @@ func TestOut(t *testing.T) {
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%#v into %s", test.CtyValue, test.TargetType), func(t *testing.T) {
 			target := reflect.New(test.TargetType)
-			err := FromCtyValue(test.CtyValue, target.Interface())
+			err := Decode(test.CtyValue, target.Interface())
 			if err != nil {
 				t.Fatalf("FromCtyValue returned error: %s", err)
 			}

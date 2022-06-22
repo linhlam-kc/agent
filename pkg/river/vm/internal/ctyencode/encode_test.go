@@ -437,7 +437,7 @@ func TestIn(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%#v into %#v", test.GoValue, test.Type), func(t *testing.T) {
-			got, err := ToCtyValue(test.GoValue, test.Type)
+			got, err := Encode(test.GoValue, test.Type)
 			if err != nil {
 				t.Fatalf("ToCtyValue returned error: %s", err)
 			}

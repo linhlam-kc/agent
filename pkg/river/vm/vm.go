@@ -204,7 +204,7 @@ func (vm *Evaluator) evaluate(scope *Scope, node ast.Node) (v cty.Value, err err
 		if err != nil {
 			return cty.NilVal, err
 		}
-		return ctyencode.ToCtyValue(val, valTy)
+		return ctyencode.Encode(val, valTy)
 
 	case *ast.AccessExpr:
 		val, err := vm.evaluate(scope, node.Value)
@@ -292,7 +292,7 @@ func decodeVal(val cty.Value, v interface{}) error {
 		}
 	}
 
-	return ctyencode.FromCtyValue(val, v)
+	return ctyencode.Decode(val, v)
 }
 
 // A Scope exposes a set of identifiers available to use when evaluating a
