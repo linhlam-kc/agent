@@ -14,6 +14,15 @@ import (
 	"github.com/zclconf/go-cty/cty/convert"
 )
 
+// TODO(rfratto): unfinished business for an MVP:
+//
+// 1. Deferred unmarshaling support ([]*ast.Block, []ast.Stmt)
+// 2. Support encoding.TextUnmarshaler/encoding.TextMarshaler
+// 3. Support custom UnmarshalRiver method on structs
+// 4. Automatically determine when something should be a capsule
+// 5. Function calls & stdlib
+// 6. Allow decoding ast.Body
+
 // Evaluator converts River AST nodes into Go values. Each Evaluator is bound
 // to a single AST node to allow it to precompute omptimizations before
 // conversion into a Go value. To evaluate the node, call Evaluate.
@@ -139,9 +148,6 @@ func (vm *Evaluator) evaluateBlock(scope *Scope, node *ast.BlockStmt, rv reflect
 	if err := vm.evaluateBlockLabel(node, tfs, rv); err != nil {
 		return err
 	}
-
-	// TODO(rfratto): should there be an []*ast.Block field for deferred
-	// unmarshaling of blocks when you don't know the name yet?
 
 	var (
 		foundAttrs  = make(map[string][]*ast.AttributeStmt, len(tfs))
@@ -344,12 +350,6 @@ func (vm *Evaluator) evaluateBlockLabel(node *ast.BlockStmt, tfs rivertags.Field
 }
 
 func (vm *Evaluator) evaluateExpr(scope *Scope, node ast.Node) (v cty.Value, err error) {
-	// TODO(rfratto): other expr types:
-	// - CallExpr
-	//
-	// And then:
-	// - Body
-
 	switch node := node.(type) {
 	case *ast.LiteralExpr:
 		return valueFromLiteral(node.Value, node.Kind)
