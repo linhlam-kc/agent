@@ -11,7 +11,42 @@ import (
 
 // This file contains tests for decoding blocks.
 
-// TODO(rfratto): what about exported fields in structs without tags?
+func TestVM_File(t *testing.T) {
+	type block struct {
+		String string `river:"string,attr"`
+		Number int    `river:"number,attr,optional"`
+	}
+	type file struct {
+		SettingA int `river:"setting_a,attr"`
+		SettingB int `river:"setting_b,attr,optional"`
+
+		Block block `river:"some_block,block,optional"`
+	}
+
+	input := `
+	setting_a = 15 
+
+	some_block {
+		string = "Hello, world!"
+	}
+	`
+
+	expect := file{
+		SettingA: 15,
+		Block: block{
+			String: "Hello, world!",
+		},
+	}
+
+	res, err := parser.ParseFile(t.Name(), []byte(input))
+	require.NoError(t, err)
+
+	eval := vm.New(res)
+
+	var actual file
+	require.NoError(t, eval.Evaluate(nil, &actual))
+	require.Equal(t, expect, actual)
+}
 
 func TestVM_Block_Attributes(t *testing.T) {
 	t.Run("Decodes attributes", func(t *testing.T) {
@@ -299,8 +334,6 @@ func TestVM_Block_Children_Blocks(t *testing.T) {
 		require.Equal(t, true, (**actual.BlockC).Attr)
 		require.Equal(t, false, (***actual.BlockD).Attr)
 	})
-
-	// TODO(rfratto): arrays of blocks
 
 	// TODO(rfratto): decode all blocks into a []*ast.BlockStmt field.
 }

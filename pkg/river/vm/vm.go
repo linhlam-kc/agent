@@ -14,9 +14,8 @@ import (
 
 // TODO(rfratto): unfinished business for an MVP:
 //
-// 1. Allow decoding ast.Body
-// 2. Support encoding.TextUnmarshaler/encoding.TextMarshaler
-// 3. Support custom UnmarshalRiver method on structs
+// 1. Support encoding.TextUnmarshaler/encoding.TextMarshaler
+// 2. Support custom UnmarshalRiver method on structs
 
 // TODO(rfratto): unfinished business but can wait:
 //
@@ -33,7 +32,7 @@ type Evaluator struct {
 }
 
 // New creates a new Evaluator for the given AST node. The given node must be
-// either an ast.Body, ast.BlockStmt, or assignable to an ast.Expr.
+// either an *ast.File, *ast.BlockStmt, or assignable to an ast.Expr.
 func New(node ast.Node) *Evaluator {
 	return &Evaluator{node: node}
 }
@@ -130,6 +129,14 @@ func (vm *Evaluator) Evaluate(scope *Scope, v interface{}) (err error) {
 		rv = rv.Elem()
 
 		return vm.evaluateBlock(scope, node, rv)
+	case *ast.File:
+		rv := reflect.ValueOf(v)
+		if rv.Kind() != reflect.Pointer {
+			panic(fmt.Sprintf("river: can only evaluate blocks into pointers, got %s", rv.Kind()))
+		}
+		rv = rv.Elem()
+
+		return vm.evaluateBody(scope, node.Body, rv)
 	default:
 		val, err := vm.evaluateExpr(scope, node)
 		if err != nil {
@@ -151,11 +158,21 @@ func (vm *Evaluator) evaluateBlock(scope *Scope, node *ast.BlockStmt, rv reflect
 		return err
 	}
 
+	return vm.evaluateBody(scope, node.Body, rv)
+}
+
+func (vm *Evaluator) evaluateBody(scope *Scope, stmts []ast.Stmt, rv reflect.Value) error {
+	if rv.Kind() != reflect.Struct {
+		panic(fmt.Sprintf("river: can only evlauate blocks into struct pointers, got pointer to %s", rv.Kind()))
+	}
+
+	tfs := rivertags.Get(rv.Type())
+
 	var (
 		foundAttrs  = make(map[string][]*ast.AttributeStmt, len(tfs))
 		foundBlocks = make(map[string][]*ast.BlockStmt, len(tfs))
 	)
-	for _, stmt := range node.Body {
+	for _, stmt := range stmts {
 		switch stmt := stmt.(type) {
 		case *ast.AttributeStmt:
 			name := stmt.Name.Name
