@@ -38,11 +38,3 @@ func TestVM_Stdlib(t *testing.T) {
 		})
 	}
 }
-
-func getExprVM(t *testing.T, input string) *vm.Evaluator {
-	t.Helper()
-
-	expr, err := parser.ParseExpression(input)
-	require.NoError(t, err)
-	return vm.New(expr)
-}
