@@ -99,7 +99,11 @@ func Get(ty reflect.Type) Fields {
 
 	for i := 0; i < ty.NumField(); i++ {
 		field := ty.Field(i)
-		tag := field.Tag.Get("river")
+
+		tag, exists := field.Tag.Lookup("river")
+		if !exists {
+			continue
+		}
 
 		if tag == "-" {
 			res = append(res, Field{

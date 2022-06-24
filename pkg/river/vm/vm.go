@@ -7,11 +7,8 @@ import (
 	"strings"
 
 	"github.com/grafana/agent/pkg/river/ast"
-	"github.com/grafana/agent/pkg/river/token"
-	"github.com/grafana/agent/pkg/river/vm/internal/ctyencode"
 	"github.com/grafana/agent/pkg/river/vm/internal/rivertags"
-	"github.com/zclconf/go-cty/cty"
-	"github.com/zclconf/go-cty/cty/convert"
+	"github.com/grafana/agent/pkg/river/vm/internal/value"
 )
 
 // TODO(rfratto): unfinished business for an MVP:
@@ -22,6 +19,7 @@ import (
 // 4. Automatically determine when something should be a capsule
 // 5. Function calls & stdlib
 // 6. Allow decoding ast.Body
+// 7. Make sure embedded fields work
 
 // Evaluator converts River AST nodes into Go values. Each Evaluator is bound
 // to a single AST node to allow it to precompute omptimizations before
@@ -349,7 +347,7 @@ func (vm *Evaluator) evaluateBlockLabel(node *ast.BlockStmt, tfs rivertags.Field
 	return nil
 }
 
-func (vm *Evaluator) evaluateExpr(scope *Scope, node ast.Node) (v cty.Value, err error) {
+func (vm *Evaluator) evaluateExpr(scope *Scope, node ast.Node) (v value.Value, err error) {
 	switch node := node.(type) {
 	case *ast.LiteralExpr:
 		return valueFromLiteral(node.Value, node.Kind)
@@ -366,73 +364,39 @@ func (vm *Evaluator) evaluateExpr(scope *Scope, node ast.Node) (v cty.Value, err
 
 		// TODO(rfratto): check types before doing this, otherwise invalid types
 		// for operators below will panic, i.e.: `3 || true`
-
-		switch node.Kind {
-		case token.OR:
-			return lhs.Or(rhs), nil
-		case token.AND:
-			return lhs.And(rhs), nil
-		case token.EQ:
-			return lhs.Equals(rhs), nil
-		case token.NEQ:
-			return lhs.NotEqual(rhs), nil
-		case token.LT:
-			return lhs.LessThan(rhs), nil
-		case token.LTE:
-			return lhs.LessThanOrEqualTo(rhs), nil
-		case token.GT:
-			return lhs.GreaterThan(rhs), nil
-		case token.GTE:
-			return lhs.GreaterThanOrEqualTo(rhs), nil
-		case token.ADD:
-			return lhs.Add(rhs), nil
-		case token.SUB:
-			return lhs.Subtract(rhs), nil
-		case token.MUL:
-			return lhs.Multiply(rhs), nil
-		case token.DIV:
-			return lhs.Divide(rhs), nil
-		case token.MOD:
-			return lhs.Modulo(rhs), nil
-		default:
-			panic(fmt.Sprintf("unrecognized binary operator %q", node.Kind))
-		}
+		return value.Binop(lhs, node.Kind, rhs), nil
 
 	case *ast.ArrayExpr:
-		var vals []cty.Value
+		var vals []value.Value
 		for _, element := range node.Elements {
 			val, err := vm.evaluateExpr(scope, element)
 			if err != nil {
-				return cty.NilVal, err
+				return value.Null, err
 			}
 			vals = append(vals, val)
 		}
 		if len(vals) == 0 {
-			return cty.ListValEmpty(cty.DynamicPseudoType), nil
+			return value.Array(), nil
 		}
-		return cty.ListVal(vals), nil
+		return value.Array(vals...), nil
 
 	case *ast.ObjectExpr:
-		attrs := make(map[string]cty.Value, len(node.Fields))
+		attrs := make(map[string]value.Value, len(node.Fields))
 		for _, field := range node.Fields {
 			val, err := vm.evaluateExpr(scope, field.Value)
 			if err != nil {
-				return cty.NilVal, err
+				return value.Null, err
 			}
 			attrs[field.Name] = val
 		}
-		return cty.ObjectVal(attrs), nil
+		return value.Map(attrs), nil
 
 	case *ast.IdentifierExpr:
 		val := findIdentifier(scope, node.Name)
 		if val == nil {
-			return cty.NilVal, fmt.Errorf("identifier %q does not exist", node.Name)
+			return value.Null, fmt.Errorf("identifier %q does not exist", node.Name)
 		}
-		valTy, err := ctyencode.ImpliedType(val)
-		if err != nil {
-			return cty.NilVal, err
-		}
-		return ctyencode.Encode(val, valTy)
+		return value.Encode(val), nil
 
 	case *ast.AccessExpr:
 		val, err := vm.evaluateExpr(scope, node.Value)
@@ -440,12 +404,23 @@ func (vm *Evaluator) evaluateExpr(scope *Scope, node ast.Node) (v cty.Value, err
 			return val, err
 		}
 
-		if !val.Type().IsObjectType() {
-			return cty.NilVal, fmt.Errorf("cannot access field %q on non-object type %s", node.Name, val.Type().FriendlyName())
-		} else if !val.Type().HasAttribute(node.Name) {
-			return cty.NilVal, fmt.Errorf("field %q does not exist", node.Name)
+		switch val.Kind() {
+		case value.KindMap:
+			res, ok := val.MapIndex(node.Name)
+			if !ok {
+				return value.Null, fmt.Errorf("field %q does not exist", node.Name)
+			}
+			return res, nil
+		case value.KindObject:
+			// TODO(rfratto): this is really inefficient
+			res, ok := val.KeyByName(node.Name)
+			if !ok {
+				return value.Null, fmt.Errorf("field %q does not exist", node.Name)
+			}
+			return res, nil
+		default:
+			return value.Null, fmt.Errorf("cannot access field %q on non-object or map type %s", node.Name, val.Type())
 		}
-		return val.GetAttr(node.Name), nil
 
 	case *ast.IndexExpr:
 		val, err := vm.evaluateExpr(scope, node.Value)
@@ -457,13 +432,13 @@ func (vm *Evaluator) evaluateExpr(scope *Scope, node ast.Node) (v cty.Value, err
 			return val, err
 		}
 
-		if !val.Type().IsListType() && !val.Type().IsTupleType() {
-			return cty.NilVal, fmt.Errorf("cannot take an index of non-list type %s", val.Type().FriendlyName())
+		if val.Kind() != value.KindArray {
+			return value.Null, fmt.Errorf("cannot take an index of non-list type %s", val.Type())
 		}
-		if !idx.Type().Equals(cty.Number) {
-			return cty.NilVal, fmt.Errorf("type %s cannot be used to index objects", idx.Type().FriendlyName())
+		if idx.Type().Kind() != value.KindNumber {
+			return value.Null, fmt.Errorf("type %s cannot be used to index objects", idx.Type())
 		}
-		return val.Index(idx), nil
+		return val.Index(int(idx.Int())), nil
 
 	case *ast.ParenExpr:
 		return vm.evaluateExpr(scope, node.Inner)
@@ -476,15 +451,7 @@ func (vm *Evaluator) evaluateExpr(scope *Scope, node ast.Node) (v cty.Value, err
 
 		// TODO(rfratto): check types before doing this, otherwise invalid types
 		// for operators below will panic, i.e.: `!3`
-
-		switch node.Kind {
-		case token.NOT:
-			return val.Not(), nil
-		case token.SUB:
-			return val.Negate(), nil
-		default:
-			panic(fmt.Sprintf("unrecognized unary operator %q", node.Kind))
-		}
+		return value.Unary(node.Kind, val), nil
 
 	default:
 		panic(fmt.Sprintf("unexpected ast.Node type %T", node))
@@ -501,26 +468,8 @@ func findIdentifier(scope *Scope, name string) interface{} {
 	return nil
 }
 
-func decodeVal(val cty.Value, v interface{}) error {
-	valTy := val.Type()
-
-	targetType, err := ctyencode.ImpliedType(v)
-	if err != nil {
-		return err
-	}
-
-	if !valTy.Equals(targetType) {
-		conv := convert.GetConversionUnsafe(valTy, targetType)
-		if conv == nil {
-			return fmt.Errorf("cannot convert from %s to %s", valTy.FriendlyName(), targetType.FriendlyName())
-		}
-		val, err = conv(val)
-		if err != nil {
-			return err
-		}
-	}
-
-	return ctyencode.Decode(val, v)
+func decodeVal(val value.Value, v interface{}) error {
+	return value.Decode(val, v)
 }
 
 // A Scope exposes a set of identifiers available to use when evaluating a

@@ -5,40 +5,40 @@ import (
 	"strconv"
 
 	"github.com/grafana/agent/pkg/river/token"
-	"github.com/zclconf/go-cty/cty"
+	"github.com/grafana/agent/pkg/river/vm/internal/value"
 )
 
-func valueFromLiteral(lit string, tok token.Token) (cty.Value, error) {
+func valueFromLiteral(lit string, tok token.Token) (value.Value, error) {
 	switch tok {
 	case token.NUMBER:
 		v, err := strconv.ParseInt(lit, 0, 64)
 		if err != nil {
-			return cty.NilVal, err
+			return value.Null, err
 		}
-		return cty.NumberIntVal(v), nil
+		return value.Int(v), nil
 
 	case token.FLOAT:
 		v, err := strconv.ParseFloat(lit, 64)
 		if err != nil {
-			return cty.NilVal, err
+			return value.Null, err
 		}
-		return cty.NumberFloatVal(v), nil
+		return value.Float(v), nil
 
 	case token.STRING:
 		v, err := strconv.Unquote(lit)
 		if err != nil {
-			return cty.NilVal, err
+			return value.Null, err
 		}
-		return cty.StringVal(v), nil
+		return value.String(v), nil
 
 	case token.BOOL:
 		switch lit {
 		case "true":
-			return cty.BoolVal(true), nil
+			return value.Bool(true), nil
 		case "false":
-			return cty.BoolVal(false), nil
+			return value.Bool(false), nil
 		default:
-			return cty.NilVal, fmt.Errorf("invalid boolean literal %q", lit)
+			return value.Null, fmt.Errorf("invalid boolean literal %q", lit)
 		}
 	default:
 		panic(fmt.Sprintf("%v is not a valid token", tok))
