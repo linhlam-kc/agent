@@ -62,7 +62,7 @@ func decode(val Value, rt reflect.Value) error {
 	case KindString:
 		convVal, err := convertBasicValue(val.v, rt.Type())
 		if err != nil {
-			return fmt.Errorf("%s expected, got number", kindFromType(rt.Type()))
+			return fmt.Errorf("%s expected, got string", kindFromType(rt.Type()))
 		}
 		rt.Set(convVal)
 	case KindBool:

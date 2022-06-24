@@ -8,6 +8,7 @@ import (
 
 	"github.com/grafana/agent/pkg/river/ast"
 	"github.com/grafana/agent/pkg/river/vm/internal/rivertags"
+	"github.com/grafana/agent/pkg/river/vm/internal/stdlib"
 	"github.com/grafana/agent/pkg/river/vm/internal/value"
 )
 
@@ -17,9 +18,9 @@ import (
 // 2. Support encoding.TextUnmarshaler/encoding.TextMarshaler
 // 3. Support custom UnmarshalRiver method on structs
 // 4. Automatically determine when something should be a capsule
-// 5. Function calls & stdlib
-// 6. Allow decoding ast.Body
-// 7. Make sure embedded fields work
+// 4. Allow decoding ast.Body
+// 6. Make sure embedded fields work
+// 7. Allow converting between []byte and string
 
 // Evaluator converts River AST nodes into Go values. Each Evaluator is bound
 // to a single AST node to allow it to precompute omptimizations before
@@ -412,7 +413,6 @@ func (vm *Evaluator) evaluateExpr(scope *Scope, node ast.Node) (v value.Value, e
 			}
 			return res, nil
 		case value.KindObject:
-			// TODO(rfratto): this is really inefficient
 			res, ok := val.KeyByName(node.Name)
 			if !ok {
 				return value.Null, fmt.Errorf("field %q does not exist", node.Name)
@@ -453,6 +453,24 @@ func (vm *Evaluator) evaluateExpr(scope *Scope, node ast.Node) (v value.Value, e
 		// for operators below will panic, i.e.: `!3`
 		return value.Unary(node.Kind, val), nil
 
+	case *ast.CallExpr:
+		funcVal, err := vm.evaluateExpr(scope, node.Value)
+		if err != nil {
+			return funcVal, err
+		}
+		if funcVal.Kind() != value.KindFunction {
+			return funcVal, fmt.Errorf("cannot invoke %s as a function", funcVal.Kind())
+		}
+
+		args := make([]value.Value, len(node.Args))
+		for i := 0; i < len(node.Args); i++ {
+			args[i], err = vm.evaluateExpr(scope, node.Args[i])
+			if err != nil {
+				return value.Null, err
+			}
+		}
+		return funcVal.Call(args...)
+
 	default:
 		panic(fmt.Sprintf("unexpected ast.Node type %T", node))
 	}
@@ -464,6 +482,11 @@ func findIdentifier(scope *Scope, name string) interface{} {
 			return val
 		}
 		scope = scope.Parent
+	}
+
+	// Look up from stdlib now
+	if fn, ok := stdlib.Functions[name]; ok {
+		return fn
 	}
 	return nil
 }

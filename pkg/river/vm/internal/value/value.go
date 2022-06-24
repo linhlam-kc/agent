@@ -42,26 +42,28 @@ func Map(m map[string]Value) Value {
 	return Value{v: raw, k: KindMap}
 }
 
-// Array creates an array from the given values. Array panics if not all the
-// Values have the same kind.
-//
-// If no values are provided, the array will be an array(any).
+// Array creates an array from the given values. If the elements in the array
+// have different types or if the array is empty, the array will be an
+// array(any).
 func Array(vv ...Value) Value {
 	if len(vv) == 0 {
 		return Encode([]interface{}(nil))
 	}
 
 	arrayType := reflect.SliceOf(vv[0].Type().ty)
+
+	elemKind := vv[0].Kind()
+	for _, v := range vv {
+		if v.Kind() != elemKind {
+			elemKind = KindAny
+			arrayType = reflect.SliceOf(emptyInterface)
+			break
+		}
+	}
+
 	raw := reflect.MakeSlice(arrayType, len(vv), len(vv))
 
-	checkKind := vv[0].Kind()
 	for i, v := range vv {
-		if v.Kind() != checkKind {
-			// TODO(rfratto): should we permit mismatched kinds if the value can be
-			// converted?
-			panic(fmt.Sprintf("river/vm: Array called with different kind types (expected %s, got %s)", checkKind, v.Kind()))
-		}
-
 		raw.Index(i).Set(v.v)
 	}
 
@@ -235,6 +237,50 @@ func (v Value) Float() float64 {
 	}
 }
 
+// Call calls a function value with the provided arguments. It panics if v is
+// not a function.
+func (v Value) Call(args ...Value) (Value, error) {
+	if v.k != KindFunction {
+		panic("river/vm: Call called on non-function type")
+	}
+
+	var (
+		variadic     = v.v.Type().IsVariadic()
+		expectedArgs = v.Type().NumArgs()
+	)
+
+	if variadic && len(args) < expectedArgs-1 {
+		return Null, fmt.Errorf("expected %d args, got %d", v.Type().NumArgs(), len(args))
+	} else if !variadic && len(args) != expectedArgs {
+		return Null, fmt.Errorf("expected %d args, got %d", v.Type().NumArgs(), len(args))
+	}
+
+	reflectArgs := make([]reflect.Value, len(args))
+	for i, arg := range args {
+		var argVal reflect.Value
+		if variadic && i >= expectedArgs-1 {
+			argType := v.v.Type().In(expectedArgs - 1).Elem()
+			argVal = reflect.New(argType).Elem()
+		} else {
+			argType := v.v.Type().In(i)
+			argVal = reflect.New(argType).Elem()
+		}
+
+		if err := decode(arg, argVal); err != nil {
+			return Null, err
+		}
+
+		reflectArgs[i] = argVal
+	}
+
+	outs := v.v.Call(reflectArgs)
+	if len(outs) != 1 {
+		panic("river/vm: functions without 1 return value are unsupported")
+	}
+
+	return makeValue(outs[0]), nil
+}
+
 // fitNumberTypes determines which type can be used for operations on values.
 // The precedence order is: float64, float32, int64, int32, int, int16, int8,
 // uint64, uint32, uint, uint16, uint8.
@@ -269,6 +315,8 @@ func convertBasicValue(v reflect.Value, target reflect.Type) (reflect.Value, err
 	fromKind, toKind := v.Type().Kind(), target.Kind()
 
 	if v.Type() == target {
+		return v, nil
+	} else if target == emptyInterface {
 		return v, nil
 	}
 
@@ -423,5 +471,5 @@ func convertBasicValue(v reflect.Value, target reflect.Type) (reflect.Value, err
 		}
 	}
 
-	return reflect.Value{}, fmt.Errorf("expected %s, got %s", kindFromType(v.Type()), kindFromType(target))
+	return reflect.Value{}, fmt.Errorf("expected %s, got %s", kindFromType(target), kindFromType(v.Type()))
 }
