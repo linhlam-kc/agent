@@ -14,6 +14,7 @@ var (
 	capsuleMarkerType = reflect.TypeOf((*capsuleMarker)(nil)).Elem()
 	emptyInterface    = reflect.TypeOf((*interface{})(nil)).Elem()
 	stringType        = reflect.TypeOf(string(""))
+	byteSliceType     = reflect.TypeOf([]byte(nil))
 )
 
 // Kind represents a category of River value.

@@ -20,7 +20,6 @@ import (
 // 4. Automatically determine when something should be a capsule
 // 4. Allow decoding ast.Body
 // 6. Make sure embedded fields work
-// 7. Allow converting between []byte and string
 
 // Evaluator converts River AST nodes into Go values. Each Evaluator is bound
 // to a single AST node to allow it to precompute omptimizations before

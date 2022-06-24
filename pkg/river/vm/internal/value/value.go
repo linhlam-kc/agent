@@ -471,5 +471,8 @@ func convertBasicValue(v reflect.Value, target reflect.Type) (reflect.Value, err
 		}
 	}
 
+	if v.CanConvert(target) {
+		return v.Convert(target), nil
+	}
 	return reflect.Value{}, fmt.Errorf("expected %s, got %s", kindFromType(target), kindFromType(v.Type()))
 }

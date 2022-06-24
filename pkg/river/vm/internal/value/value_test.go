@@ -28,6 +28,24 @@ func BenchmarkValue(b *testing.B) {
 	})
 }
 
+func TestStringByteSliceConversion(t *testing.T) {
+	t.Run("[]byte to string", func(t *testing.T) {
+		input := []byte("Hello, world!")
+
+		var actual string
+		require.NoError(t, Decode(Encode(input), &actual))
+		require.Equal(t, "Hello, world!", actual)
+	})
+
+	t.Run("string to []byte", func(t *testing.T) {
+		input := "Hello, world!"
+
+		var actual []byte
+		require.NoError(t, Decode(Encode(input), &actual))
+		require.Equal(t, []byte("Hello, world!"), actual)
+	})
+}
+
 func TestValue_Call(t *testing.T) {
 	addFunc := func(a, b int) int { return a + b }
 

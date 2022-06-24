@@ -29,8 +29,25 @@ func cloneValue(v reflect.Value) reflect.Value {
 	return v
 }
 
+func needsCloned(t reflect.Type) bool {
+	switch t.Kind() {
+	case reflect.Array, reflect.Slice, reflect.Map:
+		return true
+	default:
+		return false
+	}
+}
+
 func cloneArray(in reflect.Value) reflect.Value {
 	res := reflect.New(in.Type()).Elem()
+
+	if !needsCloned(in.Type().Elem()) {
+		// Optimization: we can use reflect.Copy if the inner type doesn't need to
+		// be cloned.
+		reflect.Copy(res, in)
+		return res
+	}
+
 	for i := 0; i < in.Len(); i++ {
 		res.Index(i).Set(cloneValue(in.Index(i)))
 	}
@@ -39,6 +56,14 @@ func cloneArray(in reflect.Value) reflect.Value {
 
 func cloneSlice(in reflect.Value) reflect.Value {
 	res := reflect.MakeSlice(in.Type(), in.Len(), in.Len())
+
+	if !needsCloned(in.Type().Elem()) {
+		// Optimization: we can use reflect.Copy if the inner type doesn't need to
+		// be cloned.
+		reflect.Copy(res, in)
+		return res
+	}
+
 	for i := 0; i < in.Len(); i++ {
 		res.Index(i).Set(cloneValue(in.Index(i)))
 	}

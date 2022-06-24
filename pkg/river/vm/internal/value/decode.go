@@ -122,6 +122,12 @@ func decodeArray(val Value, rt reflect.Value) error {
 		rt.Set(res)
 
 	default:
+		// Special case: []byte to string
+		if val.v.Type() == byteSliceType && rt.Type() == stringType {
+			rt.Set(val.v.Convert(stringType))
+			return nil
+		}
+
 		return fmt.Errorf("expected %s, got array", kindFromType(rt.Type()))
 	}
 
