@@ -14,7 +14,7 @@ import (
 
 // TODO(rfratto): unfinished business for an MVP:
 //
-// 1. Support encoding.TextUnmarshaler/encoding.TextMarshaler
+// 1. Support encoding.TextUnmarshaler/encoding.TextMarshaler when decoding blocks/files
 // 2. Support custom UnmarshalRiver method on structs
 
 // TODO(rfratto): unfinished business but can wait:

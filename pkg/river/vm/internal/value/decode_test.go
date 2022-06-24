@@ -268,3 +268,100 @@ func TestDecode_ArrayCopy(t *testing.T) {
 	res[0] = 10
 	require.Equal(t, [3]int{1, 2, 3}, orig, "Original array should not have been modified")
 }
+
+type riverEnumType bool
+
+func (et *riverEnumType) UnmarshalRiver(f func(v interface{}) error) error {
+	*et = false
+
+	var s string
+	if err := f(&s); err != nil {
+		return err
+	}
+
+	switch s {
+	case "accepted_value":
+		*et = true
+		return nil
+	default:
+		return fmt.Errorf("unrecognized value %q", s)
+	}
+}
+
+func TestDecode_Unmarshaler(t *testing.T) {
+	t.Run("valid type and value", func(t *testing.T) {
+		var et riverEnumType
+		require.NoError(t, value.Decode(value.String("accepted_value"), &et))
+		require.Equal(t, riverEnumType(true), et)
+	})
+
+	t.Run("invalid type", func(t *testing.T) {
+		var et riverEnumType
+		err := value.Decode(value.Bool(true), &et)
+		require.EqualError(t, err, "string expected, got bool")
+	})
+
+	t.Run("invalid value", func(t *testing.T) {
+		var et riverEnumType
+		err := value.Decode(value.String("bad_value"), &et)
+		require.EqualError(t, err, `unrecognized value "bad_value"`)
+	})
+
+	t.Run("unmarshaler nested in other value", func(t *testing.T) {
+		input := value.Array(
+			value.String("accepted_value"),
+			value.String("accepted_value"),
+			value.String("accepted_value"),
+		)
+
+		var ett []riverEnumType
+		require.NoError(t, value.Decode(input, &ett))
+		require.Equal(t, []riverEnumType{true, true, true}, ett)
+	})
+}
+
+type textEnumType bool
+
+func (et *textEnumType) UnmarshalText(text []byte) error {
+	*et = false
+
+	switch string(text) {
+	case "accepted_value":
+		*et = true
+		return nil
+	default:
+		return fmt.Errorf("unrecognized value %q", string(text))
+	}
+}
+
+func TestDecode_TextUnmarshaler(t *testing.T) {
+	t.Run("valid type and value", func(t *testing.T) {
+		var et textEnumType
+		require.NoError(t, value.Decode(value.String("accepted_value"), &et))
+		require.Equal(t, textEnumType(true), et)
+	})
+
+	t.Run("invalid type", func(t *testing.T) {
+		var et textEnumType
+		err := value.Decode(value.Bool(true), &et)
+		require.EqualError(t, err, "string expected, got bool")
+	})
+
+	t.Run("invalid value", func(t *testing.T) {
+		var et textEnumType
+		err := value.Decode(value.String("bad_value"), &et)
+		require.EqualError(t, err, `unrecognized value "bad_value"`)
+	})
+
+	t.Run("unmarshaler nested in other value", func(t *testing.T) {
+		input := value.Array(
+			value.String("accepted_value"),
+			value.String("accepted_value"),
+			value.String("accepted_value"),
+		)
+
+		var ett []textEnumType
+		require.NoError(t, value.Decode(input, &ett))
+		require.Equal(t, []textEnumType{true, true, true}, ett)
+	})
+}

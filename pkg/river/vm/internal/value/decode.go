@@ -1,9 +1,19 @@
 package value
 
 import (
+	"encoding"
 	"fmt"
 	"reflect"
 )
+
+// Unmarshaler allows types to implement custom unmarshal methods.
+type Unmarshaler interface {
+	// UnmarshalRiver will be called when the type is about to be decoded.
+	UnmarshalRiver(unmarshal func(v interface{}) error) error
+}
+
+var unmarshalerType = reflect.TypeOf((*Unmarshaler)(nil)).Elem()
+var textUnmarshalerType = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
 
 // Decode assigns a Value to a Go value. Decode will attempt to convert val to
 // the type expected by target for assignment. If val cannot be converted, an
@@ -24,6 +34,28 @@ func Decode(val Value, target interface{}) error {
 // the user would see they they should've provided a string instead of a bool.
 
 func decode(val Value, rt reflect.Value) error {
+	// Before decoding, we temporarily take the addr of rt so we can check to see
+	// if it implements supported interfaces.
+	if rt.CanAddr() {
+		rt = rt.Addr()
+	}
+	if rt.Type().Implements(unmarshalerType) {
+		return rt.Interface().(Unmarshaler).UnmarshalRiver(func(v interface{}) error {
+			rt := reflect.ValueOf(v)
+			if rt.Kind() != reflect.Pointer {
+				return fmt.Errorf("unmarshal called with non-pointer type")
+			}
+			return decode(val, rt)
+		})
+	} else if rt.Type().Implements(textUnmarshalerType) {
+		var s string
+		err := decode(val, reflect.ValueOf(&s))
+		if err != nil {
+			return err
+		}
+		return rt.Interface().(encoding.TextUnmarshaler).UnmarshalText([]byte(s))
+	}
+
 	// Fully deference rt and allocate pointers as necessary.
 	for rt.Kind() == reflect.Pointer {
 		if rt.IsNil() {
