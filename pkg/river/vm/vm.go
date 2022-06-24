@@ -14,12 +14,16 @@ import (
 
 // TODO(rfratto): unfinished business for an MVP:
 //
-// 1. Deferred unmarshaling support ([]*ast.Block, []ast.Stmt)
+// 1. Allow decoding ast.Body
 // 2. Support encoding.TextUnmarshaler/encoding.TextMarshaler
 // 3. Support custom UnmarshalRiver method on structs
-// 4. Automatically determine when something should be a capsule
-// 4. Allow decoding ast.Body
-// 6. Make sure embedded fields work
+
+// TODO(rfratto): unfinished business but can wait:
+//
+// 1. Deferred unmarshaling support
+// 2. Make sure embedded fields work (or support inlining)
+// 3. Code cleanup
+// 4. Support custom encoding for capsule types
 
 // Evaluator converts River AST nodes into Go values. Each Evaluator is bound
 // to a single AST node to allow it to precompute omptimizations before
