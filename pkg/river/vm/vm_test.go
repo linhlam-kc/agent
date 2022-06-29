@@ -86,7 +86,7 @@ func TestVM_Evaluate(t *testing.T) {
 		{`3 * 5`, int(15)},
 		{`3.0 / 5.0`, float64(0.6)},
 		{`5 % 3`, int(2)},
-		// {`3 ^ 5`, int(243)}, // TODO(rfratto): implement pow
+		{`3 ^ 5`, int(243)},
 		{`3 + 5 * 2`, int(13)}, // Chain multiple binops
 
 		// Identifier

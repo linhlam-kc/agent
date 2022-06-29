@@ -21,12 +21,13 @@ const (
 	NOT // !
 
 	ASSIGN // =
-	EQ     // ==
-	NEQ    // !=
-	LT     // <
-	LTE    // <=
-	GT     // >
-	GTE    // >=
+
+	EQ  // ==
+	NEQ // !=
+	LT  // <
+	LTE // <=
+	GT  // >
+	GTE // >=
 
 	ADD // +
 	SUB // -
