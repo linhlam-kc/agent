@@ -42,15 +42,16 @@ var kindTests = []struct {
 	{struct {
 		Name string `river:"name,attr"`
 	}{}, KindObject},
+	{struct{ Untagged string }{}, KindObject},
+	{struct{}{}, KindObject},
 
 	{map[string]interface{}{}, KindMap},
 
 	{func() {}, KindFunction},
 
 	{make(chan struct{}), KindCapsule},
-	{map[bool]interface{}{}, KindCapsule},      // Maps with non-string types are capsules
-	{struct{ Untagged string }{}, KindCapsule}, // Structs with no river tags should be capsules
-	{capsuleMarked(0), KindCapsule},            // Types which implement capsuleMarker should be capsules.
+	{map[bool]interface{}{}, KindCapsule}, // Maps with non-string types are capsules
+	{capsuleMarked(0), KindCapsule},       // Types which implement capsuleMarker should be capsules.
 }
 
 func Test_kindFromType(t *testing.T) {

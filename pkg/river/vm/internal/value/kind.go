@@ -97,11 +97,6 @@ func kindFromType(t reflect.Type) (k Kind) {
 		return KindMap
 
 	case reflect.Struct:
-		tfs := getCachedTags(t)
-		if len(tfs) == 0 {
-			// Structs must have at least one river tag to be used as an object.
-			return KindCapsule
-		}
 		return KindObject
 
 	case reflect.Func:
