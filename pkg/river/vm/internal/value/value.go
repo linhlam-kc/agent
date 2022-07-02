@@ -42,9 +42,7 @@ func Map(m map[string]Value) Value {
 	return Value{v: raw, k: KindMap}
 }
 
-// Array creates an array from the given values. If the elements in the array
-// have different types or if the array is empty, the array will be an
-// array(any).
+// Array creates an array from the given values.
 func Array(vv ...Value) Value {
 	if len(vv) == 0 {
 		return Encode([]interface{}(nil))
