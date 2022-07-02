@@ -34,6 +34,11 @@ func Decode(val Value, target interface{}) error {
 // the user would see they they should've provided a string instead of a bool.
 
 func decode(val Value, rt reflect.Value) error {
+	// Early check: deference val if it's an Any kind.
+	for val.Kind() == KindAny {
+		val = unwrapAny(val)
+	}
+
 	// Before decoding, we temporarily take the addr of rt so we can check to see
 	// if it implements supported interfaces.
 	if rt.CanAddr() {
@@ -64,9 +69,12 @@ func decode(val Value, rt reflect.Value) error {
 		rt = rt.Elem()
 	}
 
-	// Best case: rt is directly assignable because the underlying value of val
-	// and rt match.
-	if val.v.Type() == rt.Type() {
+	// Fastest case: rt is directly assignable.
+	switch rt.Type() {
+	case val.v.Type(): // rt == val.v
+		rt.Set(cloneValue(val.v))
+		return nil
+	case emptyInterface: // rt == interface{}
 		rt.Set(cloneValue(val.v))
 		return nil
 	}
@@ -76,15 +84,6 @@ func decode(val Value, rt reflect.Value) error {
 	switch val.Kind() {
 	case KindInvalid:
 		panic("river/vm: Deocde called with invalid value")
-	case KindAny:
-		// Unwrap and try again.
-		unwrapped := val.v.Elem()
-		unwrappedVal := Value{
-			v: unwrapped,
-			k: kindFromType(unwrapped.Type()),
-		}
-		return decode(unwrappedVal, rt)
-
 	case KindNumber:
 		convVal, err := convertBasicValue(val.v, rt.Type())
 		if err != nil {
@@ -126,6 +125,14 @@ func decode(val Value, rt reflect.Value) error {
 	}
 
 	return nil
+}
+
+func unwrapAny(val Value) Value {
+	unwrapped := val.v.Elem()
+	return Value{
+		v: unwrapped,
+		k: kindFromType(unwrapped.Type()),
+	}
 }
 
 func decodeArray(val Value, rt reflect.Value) error {

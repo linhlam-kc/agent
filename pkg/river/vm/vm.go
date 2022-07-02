@@ -388,13 +388,13 @@ func (vm *Evaluator) evaluateExpr(scope *Scope, node ast.Node) (v value.Value, e
 		return value.Binop(lhs, node.Kind, rhs), nil
 
 	case *ast.ArrayExpr:
-		var vals []value.Value
-		for _, element := range node.Elements {
+		vals := make([]value.Value, len(node.Elements))
+		for i, element := range node.Elements {
 			val, err := vm.evaluateExpr(scope, element)
 			if err != nil {
 				return value.Null, err
 			}
-			vals = append(vals, val)
+			vals[i] = val
 		}
 		if len(vals) == 0 {
 			return value.Array(), nil

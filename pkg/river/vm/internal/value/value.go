@@ -50,23 +50,7 @@ func Array(vv ...Value) Value {
 		return Encode([]interface{}(nil))
 	}
 
-	// TODO(rfratto): the logic here to only look at the first type, and to
-	// switch to an interface{} if the kind of the other elements don't match,
-	// is a bit wonky.
-	//
-	// If index 0 is a uint8, and index 1 is a uint64, then index 1 will be
-	// truncated unexpectedly. This should be fixed.
-	arrayType := reflect.SliceOf(vv[0].v.Type())
-
-	elemKind := vv[0].Kind()
-	for _, v := range vv {
-		if v.Kind() != elemKind {
-			elemKind = KindAny
-			arrayType = reflect.SliceOf(emptyInterface)
-			break
-		}
-	}
-
+	arrayType := reflect.SliceOf(emptyInterface)
 	raw := reflect.MakeSlice(arrayType, len(vv), len(vv))
 
 	for i, v := range vv {
