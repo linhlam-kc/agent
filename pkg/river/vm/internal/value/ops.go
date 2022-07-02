@@ -3,10 +3,11 @@ package value
 import (
 	"fmt"
 	"math"
-	"reflect"
 
 	"github.com/grafana/agent/pkg/river/token"
 )
+
+// TODO(rfratto): impl `+` with string
 
 // Unary performs a unary operation on the provided value. Unary will panic if
 // op is not a valid unary operator or if the value is not the right type.
@@ -64,17 +65,8 @@ func logicalBinop(left Value, op token.Token, right Value) Value {
 }
 
 func numericalBinop(left Value, op token.Token, right Value) Value {
-	needType := fitNumberTypes(left.v.Type(), right.v.Type())
-	leftV, err := convertBasicValue(left.v, needType)
-	if err != nil {
-		panic(err)
-	}
-	rightV, err := convertBasicValue(right.v, needType)
-	if err != nil {
-		panic(err)
-	}
-
-	nk := makeNumberKind(needType.Kind())
+	leftV, rightV := newNumberValue(left.v), newNumberValue(right.v)
+	nk := fitNumberKinds(leftV.k, rightV.k)
 
 	switch op {
 	case token.EQ:
@@ -199,25 +191,4 @@ func intPow[Number int64 | uint64](n, m Number) Number {
 		result *= n
 	}
 	return result
-}
-
-type numberKind uint
-
-const (
-	numberKindInt numberKind = iota
-	numberKindUint
-	numberKindFloat
-)
-
-func makeNumberKind(k reflect.Kind) numberKind {
-	switch k {
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return numberKindInt
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return numberKindUint
-	case reflect.Float32, reflect.Float64:
-		return numberKindFloat
-	default:
-		panic("river/vm: makeNumberKind called with unsupported Kind value")
-	}
 }

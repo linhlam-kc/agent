@@ -300,6 +300,11 @@ var kindPrec = map[reflect.Kind]int{
 }
 
 func convertBasicValue(v reflect.Value, target reflect.Type) (reflect.Value, error) {
+	// TODO(rfratto): this function is doing a little too much. We should convert
+	// the River values first (i.e., string -> number, number -> string, etc) so
+	// that this function only deals with decoding values where v and target have
+	// the same primitive river kind.
+
 	fromKind, toKind := v.Type().Kind(), target.Kind()
 
 	if v.Type() == target {
@@ -310,95 +315,92 @@ func convertBasicValue(v reflect.Value, target reflect.Type) (reflect.Value, err
 
 	switch fromKind {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		number := v.Int()
 		switch toKind {
 		case reflect.Int:
-			return reflect.ValueOf(int(number)), nil
+			return reflect.ValueOf(int(v.Int())), nil
 		case reflect.Int8:
-			return reflect.ValueOf(int8(number)), nil
+			return reflect.ValueOf(int8(v.Int())), nil
 		case reflect.Int16:
-			return reflect.ValueOf(int16(number)), nil
+			return reflect.ValueOf(int16(v.Int())), nil
 		case reflect.Int32:
-			return reflect.ValueOf(int32(number)), nil
+			return reflect.ValueOf(int32(v.Int())), nil
 		case reflect.Int64:
-			return reflect.ValueOf(number), nil
+			return reflect.ValueOf(v.Int()), nil
 		case reflect.Uint:
-			return reflect.ValueOf(uint(number)), nil
+			return reflect.ValueOf(uint(v.Int())), nil
 		case reflect.Uint8:
-			return reflect.ValueOf(uint8(number)), nil
+			return reflect.ValueOf(uint8(v.Int())), nil
 		case reflect.Uint16:
-			return reflect.ValueOf(uint16(number)), nil
+			return reflect.ValueOf(uint16(v.Int())), nil
 		case reflect.Uint32:
-			return reflect.ValueOf(uint32(number)), nil
+			return reflect.ValueOf(uint32(v.Int())), nil
 		case reflect.Uint64:
-			return reflect.ValueOf(uint64(number)), nil
+			return reflect.ValueOf(uint64(v.Int())), nil
 		case reflect.Float32:
-			return reflect.ValueOf(float32(number)), nil
+			return reflect.ValueOf(float32(v.Int())), nil
 		case reflect.Float64:
-			return reflect.ValueOf(float64(number)), nil
+			return reflect.ValueOf(float64(v.Int())), nil
 		case reflect.String:
-			return reflect.ValueOf(strconv.FormatInt(number, 10)), nil
+			return reflect.ValueOf(strconv.FormatInt(v.Int(), 10)), nil
 		}
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		number := v.Uint()
 		switch toKind {
 		case reflect.Int:
-			return reflect.ValueOf(int(number)), nil
+			return reflect.ValueOf(int(v.Uint())), nil
 		case reflect.Int8:
-			return reflect.ValueOf(int8(number)), nil
+			return reflect.ValueOf(int8(v.Uint())), nil
 		case reflect.Int16:
-			return reflect.ValueOf(int16(number)), nil
+			return reflect.ValueOf(int16(v.Uint())), nil
 		case reflect.Int32:
-			return reflect.ValueOf(int32(number)), nil
+			return reflect.ValueOf(int32(v.Uint())), nil
 		case reflect.Int64:
-			return reflect.ValueOf(int64(number)), nil
+			return reflect.ValueOf(int64(v.Uint())), nil
 		case reflect.Uint:
-			return reflect.ValueOf(uint(number)), nil
+			return reflect.ValueOf(uint(v.Uint())), nil
 		case reflect.Uint8:
-			return reflect.ValueOf(uint8(number)), nil
+			return reflect.ValueOf(uint8(v.Uint())), nil
 		case reflect.Uint16:
-			return reflect.ValueOf(uint16(number)), nil
+			return reflect.ValueOf(uint16(v.Uint())), nil
 		case reflect.Uint32:
-			return reflect.ValueOf(uint32(number)), nil
+			return reflect.ValueOf(uint32(v.Uint())), nil
 		case reflect.Uint64:
-			return reflect.ValueOf(number), nil
+			return reflect.ValueOf(v.Uint()), nil
 		case reflect.Float32:
-			return reflect.ValueOf(float32(number)), nil
+			return reflect.ValueOf(float32(v.Uint())), nil
 		case reflect.Float64:
-			return reflect.ValueOf(float64(number)), nil
+			return reflect.ValueOf(float64(v.Uint())), nil
 		case reflect.String:
-			return reflect.ValueOf(strconv.FormatUint(number, 10)), nil
+			return reflect.ValueOf(strconv.FormatUint(v.Uint(), 10)), nil
 		}
 
 	case reflect.Float32, reflect.Float64:
-		number := v.Float()
 		switch toKind {
 		case reflect.Int:
-			return reflect.ValueOf(int(number)), nil
+			return reflect.ValueOf(int(v.Float())), nil
 		case reflect.Int8:
-			return reflect.ValueOf(int8(number)), nil
+			return reflect.ValueOf(int8(v.Float())), nil
 		case reflect.Int16:
-			return reflect.ValueOf(int16(number)), nil
+			return reflect.ValueOf(int16(v.Float())), nil
 		case reflect.Int32:
-			return reflect.ValueOf(int32(number)), nil
+			return reflect.ValueOf(int32(v.Float())), nil
 		case reflect.Int64:
-			return reflect.ValueOf(int64(number)), nil
+			return reflect.ValueOf(int64(v.Float())), nil
 		case reflect.Uint:
-			return reflect.ValueOf(uint(number)), nil
+			return reflect.ValueOf(uint(v.Float())), nil
 		case reflect.Uint8:
-			return reflect.ValueOf(uint8(number)), nil
+			return reflect.ValueOf(uint8(v.Float())), nil
 		case reflect.Uint16:
-			return reflect.ValueOf(uint16(number)), nil
+			return reflect.ValueOf(uint16(v.Float())), nil
 		case reflect.Uint32:
-			return reflect.ValueOf(uint32(number)), nil
+			return reflect.ValueOf(uint32(v.Float())), nil
 		case reflect.Uint64:
-			return reflect.ValueOf(uint64(number)), nil
+			return reflect.ValueOf(uint64(v.Float())), nil
 		case reflect.Float32:
-			return reflect.ValueOf(float32(number)), nil
+			return reflect.ValueOf(float32(v.Float())), nil
 		case reflect.Float64:
-			return reflect.ValueOf(number), nil
+			return reflect.ValueOf(v.Float()), nil
 		case reflect.String:
-			return reflect.ValueOf(strconv.FormatFloat(number, 'f', -1, 64)), nil
+			return reflect.ValueOf(strconv.FormatFloat(v.Float(), 'f', -1, 64)), nil
 		}
 
 	case reflect.String:

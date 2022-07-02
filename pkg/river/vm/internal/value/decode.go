@@ -39,6 +39,9 @@ func decode(val Value, rt reflect.Value) error {
 	if rt.CanAddr() {
 		rt = rt.Addr()
 	}
+
+	// TODO(rfratto): is this at the right level? Does it need to be before/after
+	// deferencing?
 	if rt.Type().Implements(unmarshalerType) {
 		return rt.Interface().(Unmarshaler).UnmarshalRiver(func(v interface{}) error {
 			rt := reflect.ValueOf(v)

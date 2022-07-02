@@ -97,7 +97,7 @@ func kindFromType(t reflect.Type) (k Kind) {
 		return KindObject
 
 	case reflect.Func:
-		// TODO(rfratto): require argument?
+		// TODO(rfratto): validate arugments?
 		return KindFunction
 
 	case reflect.Interface:
