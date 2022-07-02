@@ -243,8 +243,6 @@ func TestDecode_Capsules(t *testing.T) {
 	require.Equal(t, expect, actual)
 }
 
-// TODO(rfratto): implement Call method which can call a Value function.
-
 // TestDecode_SliceCopy ensures that copies are made during decoding instead of
 // setting values directly.
 func TestDecode_SliceCopy(t *testing.T) {
