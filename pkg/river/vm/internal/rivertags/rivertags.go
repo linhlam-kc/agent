@@ -74,6 +74,7 @@ func (ff Fields) ObjectKind() bool {
 	return false
 }
 
+// Get gets an individual field by name.
 func (ff Fields) Get(name string) (f Field, ok bool) {
 	for _, tf := range ff {
 		if tf.Name == name {

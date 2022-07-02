@@ -119,13 +119,13 @@ func (f *File) PositionFor(p Pos) Position {
 	}
 
 	var line, column int
-	if i := searchInts(f.lines, int(p.off)); i >= 0 {
-		line, column = i+1, int(p.off)-f.lines[i]+1
+	if i := searchInts(f.lines, p.off); i >= 0 {
+		line, column = i+1, p.off-f.lines[i]+1
 	}
 
 	return Position{
 		Filename: f.filename,
-		Offset:   int(p.off),
+		Offset:   p.off,
 		Line:     line,
 		Column:   column,
 	}

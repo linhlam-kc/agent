@@ -45,7 +45,7 @@ var kindTests = []struct {
 	{struct{ Untagged string }{}, KindObject},
 	{struct{}{}, KindObject},
 
-	{map[string]interface{}{}, KindMap},
+	{map[string]interface{}{}, KindObject},
 
 	{func() {}, KindFunction},
 

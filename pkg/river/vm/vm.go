@@ -410,7 +410,7 @@ func (vm *Evaluator) evaluateExpr(scope *Scope, node ast.Node) (v value.Value, e
 			}
 			attrs[field.Name] = val
 		}
-		return value.Map(attrs), nil
+		return value.Object(attrs), nil
 
 	case *ast.IdentifierExpr:
 		val := findIdentifier(scope, node.Name)
@@ -426,14 +426,8 @@ func (vm *Evaluator) evaluateExpr(scope *Scope, node ast.Node) (v value.Value, e
 		}
 
 		switch val.Kind() {
-		case value.KindMap:
-			res, ok := val.MapIndex(node.Name)
-			if !ok {
-				return value.Null, fmt.Errorf("field %q does not exist", node.Name)
-			}
-			return res, nil
 		case value.KindObject:
-			res, ok := val.KeyByName(node.Name)
+			res, ok := val.Key(node.Name)
 			if !ok {
 				return value.Null, fmt.Errorf("field %q does not exist", node.Name)
 			}

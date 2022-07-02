@@ -105,8 +105,6 @@ func decode(val Value, rt reflect.Value) error {
 		return decodeArray(val, rt)
 	case KindObject:
 		return decodeObject(val, rt)
-	case KindMap:
-		return decodeMap(val, rt)
 	case KindFunction:
 		// Function types must have the exact same signature, which would've been
 		// handled in the best case statement above. If we've hit this point, the
@@ -174,6 +172,17 @@ func decodeArray(val Value, rt reflect.Value) error {
 }
 
 func decodeObject(val Value, rt reflect.Value) error {
+	switch val.v.Kind() {
+	case reflect.Struct:
+		return decodeStructObject(val, rt)
+	case reflect.Map:
+		return decodeMapObject(val, rt)
+	default:
+		panic(fmt.Sprintf("river/vm: unexpected object type %s", val.v.Kind()))
+	}
+}
+
+func decodeStructObject(val Value, rt reflect.Value) error {
 	switch rt.Kind() {
 	case reflect.Struct:
 		// TODO(rfratto): can we find a way to encode optional keys that aren't
@@ -181,9 +190,9 @@ func decodeObject(val Value, rt reflect.Value) error {
 		sourceTags := getCachedTags(val.v.Type())
 		targetTags := getCachedTags(rt.Type())
 
-		for i := 0; i < len(sourceTags); i++ {
-			key := sourceTags[i]
-			keyValue := val.Key(i)
+		for i := 0; i < sourceTags.Len(); i++ {
+			key := sourceTags.Index(i)
+			keyValue, _ := val.Key(key.Name)
 
 			// Find the equivalent key in the Go struct.
 			target, ok := targetTags.Get(key.Name)
@@ -203,13 +212,13 @@ func decodeObject(val Value, rt reflect.Value) error {
 			return fmt.Errorf("expected %s, got object", kindFromType(rt.Type()))
 		}
 
-		res := reflect.MakeMapWithSize(rt.Type(), val.NumKeys())
+		res := reflect.MakeMapWithSize(rt.Type(), val.Len())
 
 		sourceTags := getCachedTags(val.v.Type())
 
-		for i := 0; i < len(sourceTags); i++ {
-			keyName := sourceTags[i].Name
-			keyValue := val.Key(i)
+		for i := 0; i < sourceTags.Len(); i++ {
+			keyName := sourceTags.Index(i).Name
+			keyValue, _ := val.Key(keyName)
 
 			// Create a new value to hold the entry and decode into it.
 			entry := reflect.New(rt.Type().Elem()).Elem()
@@ -229,7 +238,7 @@ func decodeObject(val Value, rt reflect.Value) error {
 	return nil
 }
 
-func decodeMap(val Value, rt reflect.Value) error {
+func decodeMapObject(val Value, rt reflect.Value) error {
 	switch rt.Kind() {
 	case reflect.Struct:
 		// TODO(rfratto): can we find a way to encode optional keys that aren't
@@ -237,9 +246,9 @@ func decodeMap(val Value, rt reflect.Value) error {
 		targetTags := getCachedTags(rt.Type())
 
 		// TODO(rfratto): we need to iterate over the map
-		for _, key := range val.MapKeys() {
+		for _, key := range val.Keys() {
 			// We ignore the ok value below because we know it exists in the map.
-			value, _ := val.MapIndex(key)
+			value, _ := val.Key(key)
 
 			// Find the equivalent key in the Go struct.
 			target, ok := targetTags.Get(key)
@@ -261,9 +270,9 @@ func decodeMap(val Value, rt reflect.Value) error {
 
 		res := reflect.MakeMapWithSize(rt.Type(), val.Len())
 
-		for _, key := range val.MapKeys() {
+		for _, key := range val.Keys() {
 			// We ignore the ok value below because we know it exists in the map.
-			value, _ := val.MapIndex(key)
+			value, _ := val.Key(key)
 
 			// Create a new value to hold the entry and decode into it.
 			entry := reflect.New(rt.Type().Elem()).Elem()

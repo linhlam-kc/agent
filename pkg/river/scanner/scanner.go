@@ -594,7 +594,6 @@ func (s *Scanner) scanComment(slashComment bool) string {
 
 	var (
 		off   = s.offset - 1 // Offset of initial character
-		next  = -1           // Position following the comment (<0 = invalid)
 		numCR = 0
 
 		blockComment = false
@@ -615,11 +614,6 @@ func (s *Scanner) scanComment(slashComment bool) string {
 			s.next()
 		}
 
-		// If we're at an '\n', the position following the comment is afterwards.
-		next = s.offset
-		if s.ch == '\n' {
-			next++
-		}
 		goto exit
 	}
 
@@ -634,7 +628,6 @@ func (s *Scanner) scanComment(slashComment bool) string {
 		s.next()
 		if ch == '*' && s.ch == '/' {
 			s.next()
-			next = s.offset
 			goto exit
 		}
 	}

@@ -184,7 +184,7 @@ func TestVM_Block_Children_Blocks(t *testing.T) {
 		}
 
 		input := `some_block {
-			value = 15 
+			value = 10 
 
 			child.block { attr = true }
 			child.block { attr = false }
@@ -194,7 +194,7 @@ func TestVM_Block_Children_Blocks(t *testing.T) {
 
 		var actual block
 		require.NoError(t, eval.Evaluate(nil, &actual))
-		require.Equal(t, 15, actual.Value)
+		require.Equal(t, 10, actual.Value)
 		require.Len(t, actual.Children, 3)
 		require.Equal(t, true, actual.Children[0].Attr)
 		require.Equal(t, false, actual.Children[1].Attr)
@@ -208,7 +208,7 @@ func TestVM_Block_Children_Blocks(t *testing.T) {
 		}
 
 		input := `some_block {
-			value = 15 
+			value = 15
 
 			child.block { attr = true }
 			child.block { attr = false }
@@ -230,7 +230,7 @@ func TestVM_Block_Children_Blocks(t *testing.T) {
 		}
 
 		input := `some_block {
-			value = 15 
+			value = 30
 
 			child.block { attr = true }
 			child.block { attr = false }
@@ -242,7 +242,7 @@ func TestVM_Block_Children_Blocks(t *testing.T) {
 		actual.Children[5].Attr = true
 
 		require.NoError(t, eval.Evaluate(nil, &actual))
-		require.Equal(t, 15, actual.Value)
+		require.Equal(t, 30, actual.Value)
 		require.Equal(t, true, actual.Children[0].Attr)
 		require.Equal(t, false, actual.Children[1].Attr)
 		require.Equal(t, true, actual.Children[2].Attr)
@@ -344,18 +344,18 @@ func TestVM_Block_Label(t *testing.T) {
 			Label string `river:",label"`
 		}
 
-		input := `some_block "label_value" {}`
+		input := `some_block "label_value_1" {}`
 		eval := vm.New(parseBlock(t, input))
 
 		var actual block
 		require.NoError(t, eval.Evaluate(nil, &actual))
-		require.Equal(t, "label_value", actual.Label)
+		require.Equal(t, "label_value_1", actual.Label)
 	})
 
 	t.Run("Struct must have label field if block is labeled", func(t *testing.T) {
 		type block struct{}
 
-		input := `some_block "label_value" {}`
+		input := `some_block "label_value_2" {}`
 		eval := vm.New(parseBlock(t, input))
 
 		err := eval.Evaluate(nil, &block{})
@@ -391,7 +391,7 @@ func TestVM_Block_Label(t *testing.T) {
 			Label int `river:",label"`
 		}
 
-		input := `some_block "label_value" {}`
+		input := `some_block "label_value_3" {}`
 		eval := vm.New(parseBlock(t, input))
 
 		expectPanic := "river: cannot decode block label into non-string type int"

@@ -23,7 +23,7 @@ func FuzzParser(f *testing.F) {
 	})
 
 	f.Fuzz(func(t *testing.T, input []byte) {
-		p := newParser(t.Name(), []byte(input))
+		p := newParser(t.Name(), input)
 
 		_ = p.ParseFile()
 		if len(p.errors) > 0 {
@@ -43,7 +43,7 @@ func TestValid(t *testing.T) {
 			bb, err := os.ReadFile(path)
 			require.NoError(t, err)
 
-			p := newParser(path, []byte(bb))
+			p := newParser(path, bb)
 
 			res := p.ParseFile()
 			require.NotNil(t, res)

@@ -65,6 +65,7 @@ type ObjectExpr struct {
 	LCurly, RCurly token.Pos
 }
 
+// ObjectField defines a field within an object.
 type ObjectField struct {
 	Name    string
 	NamePos token.Pos

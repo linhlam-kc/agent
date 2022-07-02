@@ -23,12 +23,12 @@ func TestDecode(t *testing.T) {
 	tt := []struct {
 		input, expect interface{}
 	}{
-		// Non-number primatives. Non-number primatives can only ever be one Go
+		// Non-number primitives. Non-number primitives can only ever be one Go
 		// type, so they are the simplest to test.
 		{string("Hello!"), string("Hello!")},
 		{bool(true), bool(true)},
 
-		// Number primatives. Number primatives have many Go types they can be
+		// Number primitives. Number primitives have many Go types they can be
 		// converted to. We do an exhaustive list of conversions below.
 		{int(15), int(15)},
 		{int(15), int8(15)},

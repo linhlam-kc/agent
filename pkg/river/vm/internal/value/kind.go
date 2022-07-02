@@ -28,7 +28,6 @@ const (
 	KindString
 	KindBool
 	KindArray
-	KindMap
 	KindObject
 	KindFunction
 	KindCapsule
@@ -41,7 +40,6 @@ var kindStrings = [...]string{
 	KindString:   "string",
 	KindBool:     "bool",
 	KindArray:    "array",
-	KindMap:      "map",
 	KindObject:   "object",
 	KindFunction: "function",
 	KindCapsule:  "capsule",
@@ -91,10 +89,11 @@ func kindFromType(t reflect.Type) (k Kind) {
 
 	case reflect.Map:
 		if t.Key() != stringType {
-			// Maps must be keyed by string. Anything else is forced to be a Capsule.
+			// Objects must be keyed by string. Anything else is forced to be a
+			// Capsule.
 			return KindCapsule
 		}
-		return KindMap
+		return KindObject
 
 	case reflect.Struct:
 		return KindObject
