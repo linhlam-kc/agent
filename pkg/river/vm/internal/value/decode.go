@@ -77,32 +77,52 @@ func decode(val Value, rt reflect.Value) error {
 		return nil
 	}
 
+	targetKind := kindFromType(rt.Type())
+
+	// Track a value to use for the decoding. This value will be updated if it
+	// needs to be converted.
+	//
+	// NOTE(rfratto): we create a new variable instead of re-assigning to val
+	// since Go will interpret it as escaping the heap and cause more
+	// allocations.
+	convVal := val
+
+	// Slower cases: we need to convert the values.
+	switch {
+	case val.v.Type() == byteSliceType && rt.Type() == stringType:
+		// Special case: converting []byte to string.
+		rt.Set(val.v.Convert(stringType))
+		return nil
+	case val.v.Type() == stringType && rt.Type() == byteSliceType:
+		// Special case: converting string to []byte.
+		rt.Set(val.v.Convert(byteSliceType))
+		return nil
+	case val.Kind() != targetKind:
+		var err error
+		convVal, err = convertValue(convVal, targetKind)
+		if err != nil {
+			return err
+		}
+	}
+
 	// Slower cases: we'll individually examine our kinds and try to do what we
 	// can.
-	switch val.Kind() {
+	switch convVal.Kind() {
 	case KindInvalid:
 		panic("river/vm: Deocde called with invalid value")
 	case KindNumber:
-		convVal, err := convertBasicValue(val.v, rt.Type())
-		if err != nil {
-			return fmt.Errorf("%s expected, got number", kindFromType(rt.Type()))
-		}
-		rt.Set(convVal)
+		rt.Set(convertNumber(convVal.v, rt.Type()))
 	case KindString:
-		convVal, err := convertBasicValue(val.v, rt.Type())
-		if err != nil {
-			return fmt.Errorf("%s expected, got string", kindFromType(rt.Type()))
-		}
-		rt.Set(convVal)
+		rt.Set(convVal.v)
 	case KindBool:
 		if rt.Type().Kind() != reflect.Bool {
 			return fmt.Errorf("%s expected, got bool", kindFromType(rt.Type()))
 		}
-		rt.Set(reflect.ValueOf(val.v.Bool()))
+		rt.Set(reflect.ValueOf(convVal.v.Bool()))
 	case KindArray:
-		return decodeArray(val, rt)
+		return decodeArray(convVal, rt)
 	case KindObject:
-		return decodeObject(val, rt)
+		return decodeObject(convVal, rt)
 	case KindFunction:
 		// Function types must have the exact same signature, which would've been
 		// handled in the best case statement above. If we've hit this point, the
@@ -110,14 +130,14 @@ func decode(val Value, rt reflect.Value) error {
 		//
 		// TODO(rfratto): this seems wrong. How will a user-defined function ever
 		// exactly match the signature of a Go function?
-		return fmt.Errorf("cannot assign function type %s to %s", val.v.Type(), rt.Type())
+		return fmt.Errorf("cannot assign function type %s to %s", convVal.v.Type(), rt.Type())
 	case KindCapsule:
 		// Capsule types require the Go types to be exactly the same, which
 		// would've been handled in the best case statement above. If we've hit
 		// this point, the types are incompatible.
-		return fmt.Errorf("cannot assign type %s to %s", val.v.Type(), rt.Type())
+		return fmt.Errorf("cannot assign type %s to %s", convVal.v.Type(), rt.Type())
 	default:
-		panic("river/vm: unexpected kind " + val.Kind().String())
+		panic("river/vm: unexpected kind " + convVal.Kind().String())
 	}
 
 	return nil

@@ -3,6 +3,7 @@ package value
 import (
 	"math"
 	"reflect"
+	"strconv"
 )
 
 var (
@@ -74,7 +75,7 @@ func newNumberValue(v reflect.Value) numberValue {
 	case reflect.Float64:
 		val, bits, nk = math.Float64bits(v.Float()), 64, numberKindFloat
 	default:
-		panic("river/vm: unrecognized Go number type")
+		panic("river/vm: unrecognized Go number type " + v.Kind().String())
 	}
 
 	return numberValue{val, bits, nk}
@@ -99,6 +100,20 @@ func (nv numberValue) Float() float64 {
 		return math.Float64frombits(nv.value)
 	}
 	return float64(nv.value)
+}
+
+// ToString converts the number to a string.
+func (nv numberValue) ToString() string {
+	switch nv.k {
+	case numberKindUint:
+		return strconv.FormatUint(nv.value, 10)
+	case numberKindInt:
+		return strconv.FormatInt(int64(nv.value), 10)
+	case numberKindFloat:
+		return strconv.FormatFloat(math.Float64frombits(nv.value), 'f', -1, 64)
+	default:
+		panic("river/vm: invalid numberkind")
+	}
 }
 
 func fitNumberKinds(a, b numberKind) numberKind {

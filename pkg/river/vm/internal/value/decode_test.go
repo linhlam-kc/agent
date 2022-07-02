@@ -298,7 +298,7 @@ func TestDecode_Unmarshaler(t *testing.T) {
 	t.Run("invalid type", func(t *testing.T) {
 		var et riverEnumType
 		err := value.Decode(value.Bool(true), &et)
-		require.EqualError(t, err, "string expected, got bool")
+		require.EqualError(t, err, "cannot assign bool to string")
 	})
 
 	t.Run("invalid value", func(t *testing.T) {
@@ -344,7 +344,7 @@ func TestDecode_TextUnmarshaler(t *testing.T) {
 	t.Run("invalid type", func(t *testing.T) {
 		var et textEnumType
 		err := value.Decode(value.Bool(true), &et)
-		require.EqualError(t, err, "string expected, got bool")
+		require.EqualError(t, err, "cannot assign bool to string")
 	})
 
 	t.Run("invalid value", func(t *testing.T) {
