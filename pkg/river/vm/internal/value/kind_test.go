@@ -1,12 +1,10 @@
 package value
 
 import (
-	"io"
 	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // capsuleMarked is a type which would normally be a River number, but should
@@ -75,21 +73,4 @@ func Benchmark_kindFromType(b *testing.B) {
 			}
 		})
 	}
-}
-
-func Test_KindAny(t *testing.T) {
-	type container struct {
-		Value  interface{} `river:"value,attr"`
-		Writer io.Writer   `river:"writer,attr"`
-	}
-
-	containerTy := reflect.TypeOf(container{})
-
-	kind := kindFromType(containerTy)
-	require.Equal(t, KindObject, kind)
-
-	// The first key should be an any kind since it's the empty interface.
-	// Everything else should be capsules.
-	require.Equal(t, KindAny, kindFromType(containerTy.Field(0).Type))
-	require.Equal(t, KindCapsule, kindFromType(containerTy.Field(1).Type))
 }

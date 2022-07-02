@@ -23,7 +23,6 @@ type Kind uint8
 // Supported Kind values. The zero value, KindInvalid, isn't valid.
 const (
 	KindInvalid Kind = iota
-	KindAny
 	KindNumber
 	KindString
 	KindBool
@@ -35,7 +34,6 @@ const (
 
 var kindStrings = [...]string{
 	KindInvalid:  "invalid",
-	KindAny:      "any",
 	KindNumber:   "number",
 	KindString:   "string",
 	KindBool:     "bool",
@@ -103,9 +101,6 @@ func kindFromType(t reflect.Type) (k Kind) {
 		return KindFunction
 
 	case reflect.Interface:
-		if t == emptyInterface {
-			return KindAny
-		}
 		return KindCapsule
 
 	default:

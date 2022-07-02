@@ -34,11 +34,6 @@ func Decode(val Value, target interface{}) error {
 // the user would see they they should've provided a string instead of a bool.
 
 func decode(val Value, rt reflect.Value) error {
-	// Early check: deference val if it's an Any kind.
-	for val.Kind() == KindAny {
-		val = unwrapAny(val)
-	}
-
 	// Before decoding, we temporarily take the addr of rt so we can check to see
 	// if it implements supported interfaces.
 	if rt.CanAddr() {

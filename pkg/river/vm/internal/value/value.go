@@ -159,7 +159,7 @@ func (v Value) Key(key string) (index Value, ok bool) {
 // makeValue converts a reflect value into a Value. makeValue will unwrap Any
 // values into their concrete form.
 func makeValue(v reflect.Value) Value {
-	for kindFromType(v.Type()) == KindAny {
+	for v.Kind() == reflect.Pointer || v.Type() == emptyInterface {
 		v = v.Elem()
 	}
 	return Value{v: v, k: kindFromType(v.Type())}
