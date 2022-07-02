@@ -171,11 +171,11 @@ func decodeObject(val Value, rt reflect.Value) error {
 	case reflect.Struct:
 		// TODO(rfratto): can we find a way to encode optional keys that aren't
 		// set?
+		sourceTags := getCachedTags(val.v.Type())
 		targetTags := getCachedTags(rt.Type())
 
-		keys := val.Type().NumKeys()
-		for i := 0; i < keys; i++ {
-			key := val.Type().Key(i)
+		for i := 0; i < len(sourceTags); i++ {
+			key := sourceTags[i]
 			keyValue := val.Key(i)
 
 			// Find the equivalent key in the Go struct.
@@ -196,11 +196,12 @@ func decodeObject(val Value, rt reflect.Value) error {
 			return fmt.Errorf("expected %s, got object", kindFromType(rt.Type()))
 		}
 
-		res := reflect.MakeMapWithSize(rt.Type(), val.Type().NumKeys())
+		res := reflect.MakeMapWithSize(rt.Type(), val.NumKeys())
 
-		keys := val.Type().NumKeys()
-		for i := 0; i < keys; i++ {
-			keyName := val.Type().Key(i).Name
+		sourceTags := getCachedTags(val.v.Type())
+
+		for i := 0; i < len(sourceTags); i++ {
+			keyName := sourceTags[i].Name
 			keyValue := val.Key(i)
 
 			// Create a new value to hold the entry and decode into it.

@@ -19,13 +19,6 @@ func BenchmarkValue(b *testing.B) {
 			_ = Encode(p)
 		}
 	})
-
-	b.Run("Type", func(b *testing.B) {
-		v := Encode(p)
-		for i := 0; i < b.N; i++ {
-			_ = v.Type()
-		}
-	})
 }
 
 func TestStringByteSliceConversion(t *testing.T) {

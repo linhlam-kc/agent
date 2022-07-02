@@ -83,14 +83,13 @@ func Test_KindAny(t *testing.T) {
 		Writer io.Writer   `river:"writer,attr"`
 	}
 
-	ty := Type{
-		ty: reflect.TypeOf(container{}),
-		k:  kindFromType(reflect.TypeOf(container{})),
-	}
-	require.Equal(t, KindObject, ty.Kind())
+	containerTy := reflect.TypeOf(container{})
+
+	kind := kindFromType(containerTy)
+	require.Equal(t, KindObject, kind)
 
 	// The first key should be an any kind since it's the empty interface.
 	// Everything else should be capsules.
-	require.Equal(t, KindAny, ty.Key(0).Type.Kind())
-	require.Equal(t, KindCapsule, ty.Key(1).Type.Kind())
+	require.Equal(t, KindAny, kindFromType(containerTy.Field(0).Type))
+	require.Equal(t, KindCapsule, kindFromType(containerTy.Field(1).Type))
 }

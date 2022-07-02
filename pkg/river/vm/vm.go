@@ -439,7 +439,7 @@ func (vm *Evaluator) evaluateExpr(scope *Scope, node ast.Node) (v value.Value, e
 			}
 			return res, nil
 		default:
-			return value.Null, fmt.Errorf("cannot access field %q on non-object or map type %s", node.Name, val.Type())
+			return value.Null, fmt.Errorf("cannot access field %q on non-object or map type %s", node.Name, val.Kind())
 		}
 
 	case *ast.IndexExpr:
@@ -453,10 +453,10 @@ func (vm *Evaluator) evaluateExpr(scope *Scope, node ast.Node) (v value.Value, e
 		}
 
 		if val.Kind() != value.KindArray {
-			return value.Null, fmt.Errorf("cannot take an index of non-list type %s", val.Type())
+			return value.Null, fmt.Errorf("cannot take an index of non-list type %s", val.Kind())
 		}
-		if idx.Type().Kind() != value.KindNumber {
-			return value.Null, fmt.Errorf("type %s cannot be used to index objects", idx.Type())
+		if idx.Kind() != value.KindNumber {
+			return value.Null, fmt.Errorf("type %s cannot be used to index objects", idx.Kind())
 		}
 		return val.Index(int(idx.Int())), nil
 

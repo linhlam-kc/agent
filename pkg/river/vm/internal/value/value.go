@@ -50,7 +50,13 @@ func Array(vv ...Value) Value {
 		return Encode([]interface{}(nil))
 	}
 
-	arrayType := reflect.SliceOf(vv[0].Type().ty)
+	// TODO(rfratto): the logic here to only look at the first type, and to
+	// switch to an interface{} if the kind of the other elements don't match,
+	// is a bit wonky.
+	//
+	// If index 0 is a uint8, and index 1 is a uint64, then index 1 will be
+	// truncated unexpectedly. This should be fixed.
+	arrayType := reflect.SliceOf(vv[0].v.Type())
 
 	elemKind := vv[0].Kind()
 	for _, v := range vv {
@@ -88,11 +94,6 @@ func Func(f interface{}) Value {
 // Capsule creates a new Capsule value from v.
 func Capsule(v interface{}) Value {
 	return Value{v: reflect.ValueOf(v), k: KindCapsule}
-}
-
-// Type returns the Type of the value.
-func (v Value) Type() Type {
-	return Type{ty: v.v.Type(), k: v.k}
 }
 
 // Kind returns the Kind of the value.
@@ -167,6 +168,16 @@ func (v Value) Key(i int) Value {
 		panic(fmt.Sprintf("river/vm: Key %d out of range of [0, %d)", i, len(ff)))
 	}
 	return makeValue(v.v.Field(ff[i].Index))
+}
+
+// NumKeys returns the number of keys in the Value. Panics if the Kind of Value
+// is not KindObject.
+func (v Value) NumKeys() int {
+	if v.k != KindObject {
+		panic("river/vm: NumKeys called on non-object value")
+	}
+
+	return len(getCachedTags(v.v.Type()))
 }
 
 // KeyByName returns a named key from the value. Panics if the Kind of value is
@@ -246,13 +257,13 @@ func (v Value) Call(args ...Value) (Value, error) {
 
 	var (
 		variadic     = v.v.Type().IsVariadic()
-		expectedArgs = v.Type().NumArgs()
+		expectedArgs = v.v.Type().NumIn()
 	)
 
 	if variadic && len(args) < expectedArgs-1 {
-		return Null, fmt.Errorf("expected %d args, got %d", v.Type().NumArgs(), len(args))
+		return Null, fmt.Errorf("expected %d args, got %d", expectedArgs-1, len(args))
 	} else if !variadic && len(args) != expectedArgs {
-		return Null, fmt.Errorf("expected %d args, got %d", v.Type().NumArgs(), len(args))
+		return Null, fmt.Errorf("expected %d args, got %d", expectedArgs, len(args))
 	}
 
 	reflectArgs := make([]reflect.Value, len(args))

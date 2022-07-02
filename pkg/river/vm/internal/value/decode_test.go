@@ -211,7 +211,7 @@ func TestDecode(t *testing.T) {
 
 		name := fmt.Sprintf(
 			"%s (%s) to %s",
-			val.Type(),
+			val.Kind(),
 			reflect.TypeOf(tc.input),
 			reflect.TypeOf(tc.expect),
 		)

@@ -64,7 +64,7 @@ func logicalBinop(left Value, op token.Token, right Value) Value {
 }
 
 func numericalBinop(left Value, op token.Token, right Value) Value {
-	needType := fitNumberTypes(left.Type().ty, right.Type().ty)
+	needType := fitNumberTypes(left.v.Type(), right.v.Type())
 	leftV, err := convertBasicValue(left.v, needType)
 	if err != nil {
 		panic(err)
