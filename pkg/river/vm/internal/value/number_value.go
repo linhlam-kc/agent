@@ -61,15 +61,15 @@ func newNumberValue(v reflect.Value) numberValue {
 	case reflect.Int64:
 		val, bits, nk = uint64(v.Int()), 64, numberKindInt
 	case reflect.Uint:
-		val, bits, nk = uint64(v.Uint()), nativeUintBits, numberKindUint
+		val, bits, nk = v.Uint(), nativeUintBits, numberKindUint
 	case reflect.Uint8:
-		val, bits, nk = uint64(v.Uint()), 8, numberKindUint
+		val, bits, nk = v.Uint(), 8, numberKindUint
 	case reflect.Uint16:
-		val, bits, nk = uint64(v.Uint()), 16, numberKindUint
+		val, bits, nk = v.Uint(), 16, numberKindUint
 	case reflect.Uint32:
-		val, bits, nk = uint64(v.Uint()), 32, numberKindUint
+		val, bits, nk = v.Uint(), 32, numberKindUint
 	case reflect.Uint64:
-		val, bits, nk = uint64(v.Uint()), 64, numberKindUint
+		val, bits, nk = v.Uint(), 64, numberKindUint
 	case reflect.Float32:
 		val, bits, nk = math.Float64bits(v.Float()), 32, numberKindFloat
 	case reflect.Float64:

@@ -143,14 +143,6 @@ func decode(val Value, rt reflect.Value) error {
 	return nil
 }
 
-func unwrapAny(val Value) Value {
-	unwrapped := val.v.Elem()
-	return Value{
-		v: unwrapped,
-		k: kindFromType(unwrapped.Type()),
-	}
-}
-
 func decodeArray(val Value, rt reflect.Value) error {
 	switch rt.Kind() {
 	case reflect.Slice:

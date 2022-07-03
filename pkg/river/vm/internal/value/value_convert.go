@@ -7,11 +7,6 @@ import (
 	"strings"
 )
 
-var (
-	stringValTrue  = String("true")
-	stringValFalse = String("false")
-)
-
 // convertValue converts a Value to a Value of a different Kind. The only valid
 // conversions between kinds are between numbers and strings.
 func convertValue(val Value, toKind Kind) (Value, error) {
