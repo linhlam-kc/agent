@@ -110,15 +110,9 @@ func New(node ast.Node) *Evaluator {
 // Fields with tag "name,block" or "name,block,optional" may be slices to
 // support multiple children blocks with the same name.
 func (vm *Evaluator) Evaluate(scope *Scope, v interface{}) (err error) {
-	defer func() {
-		if err != nil {
-			// Wrap error with line information if the AST node has a valid position
-			pos := ast.StartPos(vm.node).Position()
-			if pos.IsValid() {
-				err = fmt.Errorf("%s: %w", pos, err)
-			}
-		}
-	}()
+	// Track a map for us to associate values with ast.Nodes for decorating
+	// errors with.
+	assoc := make(map[value.Value]ast.Node)
 
 	switch node := vm.node.(type) {
 	case *ast.BlockStmt:
@@ -128,7 +122,7 @@ func (vm *Evaluator) Evaluate(scope *Scope, v interface{}) (err error) {
 		}
 		rv = rv.Elem()
 
-		return vm.evaluateBlock(scope, node, rv)
+		return vm.evaluateBlock(scope, assoc, node, rv)
 	case *ast.File:
 		rv := reflect.ValueOf(v)
 		if rv.Kind() != reflect.Pointer {
@@ -136,17 +130,17 @@ func (vm *Evaluator) Evaluate(scope *Scope, v interface{}) (err error) {
 		}
 		rv = rv.Elem()
 
-		return vm.evaluateBody(scope, node.Body, rv)
+		return vm.evaluateBody(scope, assoc, node.Body, rv)
 	default:
-		val, err := vm.evaluateExpr(scope, node)
+		val, err := vm.evaluateExpr(scope, assoc, node)
 		if err != nil {
 			return err
 		}
-		return decodeVal(val, v)
+		return decodeVal(val, assoc, v)
 	}
 }
 
-func (vm *Evaluator) evaluateBlock(scope *Scope, node *ast.BlockStmt, rv reflect.Value) error {
+func (vm *Evaluator) evaluateBlock(scope *Scope, assoc map[value.Value]ast.Node, node *ast.BlockStmt, rv reflect.Value) error {
 	if rv.Kind() != reflect.Struct {
 		panic(fmt.Sprintf("river: can only evlauate blocks into struct pointers, got pointer to %s", rv.Kind()))
 	}
@@ -154,14 +148,14 @@ func (vm *Evaluator) evaluateBlock(scope *Scope, node *ast.BlockStmt, rv reflect
 	tfs := rivertags.Get(rv.Type())
 
 	// Decode the block label first.
-	if err := vm.evaluateBlockLabel(node, tfs, rv); err != nil {
+	if err := vm.evaluateBlockLabel(node, assoc, tfs, rv); err != nil {
 		return err
 	}
 
-	return vm.evaluateBody(scope, node.Body, rv)
+	return vm.evaluateBody(scope, assoc, node.Body, rv)
 }
 
-func (vm *Evaluator) evaluateBody(scope *Scope, stmts []ast.Stmt, rv reflect.Value) error {
+func (vm *Evaluator) evaluateBody(scope *Scope, assoc map[value.Value]ast.Node, stmts []ast.Stmt, rv reflect.Value) error {
 	if rv.Kind() != reflect.Struct {
 		panic(fmt.Sprintf("river: can only evlauate blocks into struct pointers, got pointer to %s", rv.Kind()))
 	}
@@ -254,7 +248,7 @@ func (vm *Evaluator) evaluateBody(scope *Scope, stmts []ast.Stmt, rv reflect.Val
 				// individually into the slice.
 				for i, block := range blocks {
 					decodeElement := prepareDecodeValue(decodeField.Index(i))
-					err := vm.evaluateBlock(scope, block, decodeElement)
+					err := vm.evaluateBlock(scope, assoc, block, decodeElement)
 					if err != nil {
 						return err
 					}
@@ -272,7 +266,7 @@ func (vm *Evaluator) evaluateBody(scope *Scope, stmts []ast.Stmt, rv reflect.Val
 						continue
 					}
 
-					err := vm.evaluateBlock(scope, blocks[i], decodeElement)
+					err := vm.evaluateBlock(scope, assoc, blocks[i], decodeElement)
 					if err != nil {
 						return err
 					}
@@ -282,21 +276,21 @@ func (vm *Evaluator) evaluateBody(scope *Scope, stmts []ast.Stmt, rv reflect.Val
 				if len(blocks) > 1 {
 					return fmt.Errorf("block %q may only be specified once", tf.Name)
 				}
-				err := vm.evaluateBlock(scope, blocks[0], decodeField)
+				err := vm.evaluateBlock(scope, assoc, blocks[0], decodeField)
 				if err != nil {
 					return err
 				}
 			}
 
 		case tf.IsAttr():
-			val, err := vm.evaluateExpr(scope, attrs[0].Value)
+			val, err := vm.evaluateExpr(scope, assoc, attrs[0].Value)
 			if err != nil {
 				return err
 			}
 
 			// We're reconverting our reflect.Value back into an interface{}, so we
 			// need to also turn it back into a pointer for decoding.
-			if err := decodeVal(val, field.Addr().Interface()); err != nil {
+			if err := decodeVal(val, assoc, field.Addr().Interface()); err != nil {
 				return err
 			}
 		}
@@ -331,7 +325,7 @@ func prepareDecodeValue(v reflect.Value) reflect.Value {
 	return v
 }
 
-func (vm *Evaluator) evaluateBlockLabel(node *ast.BlockStmt, tfs rivertags.Fields, rv reflect.Value) error {
+func (vm *Evaluator) evaluateBlockLabel(node *ast.BlockStmt, assoc map[value.Value]ast.Node, tfs rivertags.Fields, rv reflect.Value) error {
 	var (
 		labelField rivertags.Field
 		foundField bool
@@ -368,17 +362,23 @@ func (vm *Evaluator) evaluateBlockLabel(node *ast.BlockStmt, tfs rivertags.Field
 	return nil
 }
 
-func (vm *Evaluator) evaluateExpr(scope *Scope, node ast.Node) (v value.Value, err error) {
+func (vm *Evaluator) evaluateExpr(scope *Scope, assoc map[value.Value]ast.Node, node ast.Node) (v value.Value, err error) {
+	defer func() {
+		if v != value.Null {
+			assoc[v] = node
+		}
+	}()
+
 	switch node := node.(type) {
 	case *ast.LiteralExpr:
 		return valueFromLiteral(node.Value, node.Kind)
 
 	case *ast.BinaryExpr:
-		lhs, err := vm.evaluateExpr(scope, node.Left)
+		lhs, err := vm.evaluateExpr(scope, assoc, node.Left)
 		if err != nil {
 			return lhs, err
 		}
-		rhs, err := vm.evaluateExpr(scope, node.Right)
+		rhs, err := vm.evaluateExpr(scope, assoc, node.Right)
 		if err != nil {
 			return rhs, err
 		}
@@ -390,7 +390,7 @@ func (vm *Evaluator) evaluateExpr(scope *Scope, node ast.Node) (v value.Value, e
 	case *ast.ArrayExpr:
 		vals := make([]value.Value, len(node.Elements))
 		for i, element := range node.Elements {
-			val, err := vm.evaluateExpr(scope, element)
+			val, err := vm.evaluateExpr(scope, assoc, element)
 			if err != nil {
 				return value.Null, err
 			}
@@ -404,7 +404,7 @@ func (vm *Evaluator) evaluateExpr(scope *Scope, node ast.Node) (v value.Value, e
 	case *ast.ObjectExpr:
 		attrs := make(map[string]value.Value, len(node.Fields))
 		for _, field := range node.Fields {
-			val, err := vm.evaluateExpr(scope, field.Value)
+			val, err := vm.evaluateExpr(scope, assoc, field.Value)
 			if err != nil {
 				return value.Null, err
 			}
@@ -420,7 +420,7 @@ func (vm *Evaluator) evaluateExpr(scope *Scope, node ast.Node) (v value.Value, e
 		return value.Encode(val), nil
 
 	case *ast.AccessExpr:
-		val, err := vm.evaluateExpr(scope, node.Value)
+		val, err := vm.evaluateExpr(scope, assoc, node.Value)
 		if err != nil {
 			return val, err
 		}
@@ -437,11 +437,11 @@ func (vm *Evaluator) evaluateExpr(scope *Scope, node ast.Node) (v value.Value, e
 		}
 
 	case *ast.IndexExpr:
-		val, err := vm.evaluateExpr(scope, node.Value)
+		val, err := vm.evaluateExpr(scope, assoc, node.Value)
 		if err != nil {
 			return val, err
 		}
-		idx, err := vm.evaluateExpr(scope, node.Index)
+		idx, err := vm.evaluateExpr(scope, assoc, node.Index)
 		if err != nil {
 			return val, err
 		}
@@ -455,10 +455,10 @@ func (vm *Evaluator) evaluateExpr(scope *Scope, node ast.Node) (v value.Value, e
 		return val.Index(int(idx.Int())), nil
 
 	case *ast.ParenExpr:
-		return vm.evaluateExpr(scope, node.Inner)
+		return vm.evaluateExpr(scope, assoc, node.Inner)
 
 	case *ast.UnaryExpr:
-		val, err := vm.evaluateExpr(scope, node.Expression)
+		val, err := vm.evaluateExpr(scope, assoc, node.Expression)
 		if err != nil {
 			return val, err
 		}
@@ -468,7 +468,7 @@ func (vm *Evaluator) evaluateExpr(scope *Scope, node ast.Node) (v value.Value, e
 		return value.Unary(node.Kind, val), nil
 
 	case *ast.CallExpr:
-		funcVal, err := vm.evaluateExpr(scope, node.Value)
+		funcVal, err := vm.evaluateExpr(scope, assoc, node.Value)
 		if err != nil {
 			return funcVal, err
 		}
@@ -478,7 +478,7 @@ func (vm *Evaluator) evaluateExpr(scope *Scope, node ast.Node) (v value.Value, e
 
 		args := make([]value.Value, len(node.Args))
 		for i := 0; i < len(node.Args); i++ {
-			args[i], err = vm.evaluateExpr(scope, node.Args[i])
+			args[i], err = vm.evaluateExpr(scope, assoc, node.Args[i])
 			if err != nil {
 				return value.Null, err
 			}
@@ -505,8 +505,12 @@ func findIdentifier(scope *Scope, name string) interface{} {
 	return nil
 }
 
-func decodeVal(val value.Value, v interface{}) error {
-	return value.Decode(val, v)
+func decodeVal(val value.Value, assoc map[value.Value]ast.Node, v interface{}) error {
+	err := value.Decode(val, v)
+	if err != nil {
+		err = convertValueError(err, assoc)
+	}
+	return err
 }
 
 // A Scope exposes a set of identifiers available to use when evaluating a

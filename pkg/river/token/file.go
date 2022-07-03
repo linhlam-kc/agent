@@ -48,7 +48,7 @@ type Position struct {
 // IsValid reports whether the position is valid. Valid positions must have a
 // Line value of at least 1.
 func (pos *Position) IsValid() bool {
-	return pos.Line > 1
+	return pos.Line >= 1
 }
 
 // String returns a string in one of the following forms:

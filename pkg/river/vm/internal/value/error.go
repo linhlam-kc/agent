@@ -48,3 +48,35 @@ type FieldError struct {
 func (fe FieldError) Error() string {
 	return fmt.Sprintf("field %s: %s", fe.Field, fe.Inner)
 }
+
+// WalkError walks err for all value-related errors in this package.
+// WalkError returns false if err is not an error from this package.
+func WalkError(err error, f func(err error)) bool {
+	var foundOne bool
+
+	nextError := err
+	for nextError != nil {
+		switch ne := nextError.(type) {
+		case TypeError:
+			f(nextError)
+			nextError = nil
+			foundOne = true
+		case MissingKeyError:
+			f(nextError)
+			nextError = nil
+			foundOne = true
+		case ElementError:
+			f(nextError)
+			nextError = ne.Inner
+			foundOne = true
+		case FieldError:
+			f(nextError)
+			nextError = ne.Inner
+			foundOne = true
+		default:
+			nextError = nil
+		}
+	}
+
+	return foundOne
+}
