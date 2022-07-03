@@ -296,7 +296,7 @@ func TestDecode_Unmarshaler(t *testing.T) {
 	t.Run("invalid type", func(t *testing.T) {
 		var et riverEnumType
 		err := value.Decode(value.Bool(true), &et)
-		require.EqualError(t, err, "cannot assign bool to string")
+		require.EqualError(t, err, "expected string, got bool")
 	})
 
 	t.Run("invalid value", func(t *testing.T) {
@@ -342,7 +342,7 @@ func TestDecode_TextUnmarshaler(t *testing.T) {
 	t.Run("invalid type", func(t *testing.T) {
 		var et textEnumType
 		err := value.Decode(value.Bool(true), &et)
-		require.EqualError(t, err, "cannot assign bool to string")
+		require.EqualError(t, err, "expected string, got bool")
 	})
 
 	t.Run("invalid value", func(t *testing.T) {
@@ -362,4 +362,32 @@ func TestDecode_TextUnmarshaler(t *testing.T) {
 		require.NoError(t, value.Decode(input, &ett))
 		require.Equal(t, []textEnumType{true, true, true}, ett)
 	})
+}
+
+func TestDecode_ErrorChain(t *testing.T) {
+	type Target struct {
+		Key struct {
+			Object struct {
+				Field1 []int `river:"field1,key"`
+			} `river:"object,key"`
+		} `river:"key,key"`
+	}
+
+	val := value.Object(map[string]value.Value{
+		"key": value.Object(map[string]value.Value{
+			"object": value.Object(map[string]value.Value{
+				"field1": value.Array(
+					value.Int(15),
+					value.Int(30),
+					value.String("Hello, world!"),
+				),
+			}),
+		}),
+	})
+
+	// The raw error messages that the value package uses are ugly. Callers
+	// should decorate them for friendlier consumption.
+	err := value.Decode(val, &Target{})
+	expectErr := `field key: field object: field field1: index 2: expected number, got string`
+	require.EqualError(t, err, expectErr)
 }

@@ -1,7 +1,6 @@
 package value
 
 import (
-	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -32,35 +31,35 @@ func convertValue(val Value, toKind Kind) (Value, error) {
 		case KindNumber: // string -> number
 			switch {
 			case sourceStr == "":
-				return Null, fmt.Errorf("cannot convert string %q to number", sourceStr)
+				return Null, TypeError{Value: val, Expected: toKind}
 
 			case sourceStr[0] == '-':
 				// String starts with a -; parse as a signed int.
-				val, err := strconv.ParseInt(sourceStr, 10, 64)
+				parsed, err := strconv.ParseInt(sourceStr, 10, 64)
 				if err != nil {
-					return Null, fmt.Errorf("cannot convert string %q to number: %w", sourceStr, err)
+					return Null, TypeError{Value: val, Expected: toKind}
 				}
-				return Int(val), nil
+				return Int(parsed), nil
 			case strings.ContainsAny(sourceStr, ".eE"):
 				// String contains something that a floating-point number would use;
 				// convert.
-				val, err := strconv.ParseFloat(sourceStr, 64)
+				parsed, err := strconv.ParseFloat(sourceStr, 64)
 				if err != nil {
-					return Null, fmt.Errorf("cannot convert string %q to number: %w", sourceStr, err)
+					return Null, TypeError{Value: val, Expected: toKind}
 				}
-				return Float(val), nil
+				return Float(parsed), nil
 			default:
 				// Otherwise, treat the number as an unsigned int.
-				val, err := strconv.ParseUint(sourceStr, 10, 64)
+				parsed, err := strconv.ParseUint(sourceStr, 10, 64)
 				if err != nil {
-					return Null, fmt.Errorf("cannot convert string %q to number: %w", sourceStr, err)
+					return Null, TypeError{Value: val, Expected: toKind}
 				}
-				return Uint(val), nil
+				return Uint(parsed), nil
 			}
 		}
 	}
 
-	return Null, fmt.Errorf("cannot assign %s to %s", fromKind, toKind)
+	return Null, TypeError{Value: val, Expected: toKind}
 }
 
 func convertNumber(v reflect.Value, target reflect.Type) reflect.Value {

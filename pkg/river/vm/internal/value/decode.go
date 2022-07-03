@@ -46,6 +46,7 @@ func decode(val Value, rt reflect.Value) error {
 		return rt.Interface().(Unmarshaler).UnmarshalRiver(func(v interface{}) error {
 			rt := reflect.ValueOf(v)
 			if rt.Kind() != reflect.Pointer {
+				// TODO(rfratto): special error for this? panic?
 				return fmt.Errorf("unmarshal called with non-pointer type")
 			}
 			return decode(val, rt)
@@ -109,14 +110,14 @@ func decode(val Value, rt reflect.Value) error {
 	// can.
 	switch convVal.Kind() {
 	case KindInvalid:
-		panic("river/vm: Deocde called with invalid value")
+		panic("river/vm: Decode called with invalid value")
 	case KindNumber:
 		rt.Set(convertNumber(convVal.v, rt.Type()))
 	case KindString:
 		rt.Set(convVal.v)
 	case KindBool:
 		if rt.Type().Kind() != reflect.Bool {
-			return fmt.Errorf("%s expected, got bool", kindFromType(rt.Type()))
+			return TypeError{Value: convVal, Expected: kindFromType(rt.Type())}
 		}
 		rt.Set(reflect.ValueOf(convVal.v.Bool()))
 	case KindArray:
@@ -150,7 +151,7 @@ func decodeArray(val Value, rt reflect.Value) error {
 		for i := 0; i < val.v.Len(); i++ {
 			// Decode the original elements into the new elements.
 			if err := decode(val.Index(i), res.Index(i)); err != nil {
-				return err
+				return ElementError{Value: val, Index: i, Inner: err}
 			}
 		}
 		rt.Set(res)
@@ -163,7 +164,7 @@ func decodeArray(val Value, rt reflect.Value) error {
 				break
 			}
 			if err := decode(val.Index(i), res.Index(i)); err != nil {
-				return err
+				return ElementError{Value: val, Index: i, Inner: err}
 			}
 		}
 		rt.Set(res)
@@ -175,7 +176,7 @@ func decodeArray(val Value, rt reflect.Value) error {
 			return nil
 		}
 
-		return fmt.Errorf("expected %s, got array", kindFromType(rt.Type()))
+		return TypeError{Value: val, Expected: kindFromType(rt.Type())}
 	}
 
 	return nil
@@ -207,11 +208,11 @@ func decodeStructObject(val Value, rt reflect.Value) error {
 			// Find the equivalent key in the Go struct.
 			target, ok := targetTags.Get(key.Name)
 			if !ok {
-				return fmt.Errorf("unsupported key %q", key.Name)
+				return TypeError{Value: val, Expected: kindFromType(rt.Type())}
 			}
 
 			if err := decode(keyValue, rt.Field(target.Index)); err != nil {
-				return err
+				return FieldError{Value: val, Field: key.Name, Inner: err}
 			}
 		}
 
@@ -219,7 +220,7 @@ func decodeStructObject(val Value, rt reflect.Value) error {
 		if rt.Type().Key() != stringType {
 			// Maps with non-string types are treated as capsules and can't be
 			// decoded from objects.
-			return fmt.Errorf("expected %s, got object", kindFromType(rt.Type()))
+			return TypeError{Value: val, Expected: kindFromType(rt.Type())}
 		}
 
 		res := reflect.MakeMapWithSize(rt.Type(), val.Len())
@@ -233,7 +234,7 @@ func decodeStructObject(val Value, rt reflect.Value) error {
 			// Create a new value to hold the entry and decode into it.
 			entry := reflect.New(rt.Type().Elem()).Elem()
 			if err := decode(keyValue, entry); err != nil {
-				return err
+				return FieldError{Value: val, Field: keyName, Inner: err}
 			}
 
 			// Then set the map index.
@@ -242,7 +243,7 @@ func decodeStructObject(val Value, rt reflect.Value) error {
 		rt.Set(res)
 
 	default:
-		return fmt.Errorf("expected %s, got map", kindFromType(rt.Type()))
+		return TypeError{Value: val, Expected: kindFromType(rt.Type())}
 	}
 
 	return nil
@@ -255,7 +256,6 @@ func decodeMapObject(val Value, rt reflect.Value) error {
 		// set?
 		targetTags := getCachedTags(rt.Type())
 
-		// TODO(rfratto): we need to iterate over the map
 		for _, key := range val.Keys() {
 			// We ignore the ok value below because we know it exists in the map.
 			value, _ := val.Key(key)
@@ -263,11 +263,11 @@ func decodeMapObject(val Value, rt reflect.Value) error {
 			// Find the equivalent key in the Go struct.
 			target, ok := targetTags.Get(key)
 			if !ok {
-				return fmt.Errorf("unsupported key %q", key)
+				return MissingKeyError{Value: value, Missing: key}
 			}
 
 			if err := decode(value, rt.Field(target.Index)); err != nil {
-				return err
+				return FieldError{Value: val, Field: key, Inner: err}
 			}
 		}
 
@@ -275,7 +275,7 @@ func decodeMapObject(val Value, rt reflect.Value) error {
 		if rt.Type().Key() != stringType {
 			// Maps with non-string types are treated as capsules and can't be
 			// decoded from maps.
-			return fmt.Errorf("expected %s, got object", kindFromType(rt.Type()))
+			return TypeError{Value: val, Expected: kindFromType(rt.Type())}
 		}
 
 		res := reflect.MakeMapWithSize(rt.Type(), val.Len())
@@ -287,7 +287,7 @@ func decodeMapObject(val Value, rt reflect.Value) error {
 			// Create a new value to hold the entry and decode into it.
 			entry := reflect.New(rt.Type().Elem()).Elem()
 			if err := decode(value, entry); err != nil {
-				return err
+				return FieldError{Value: val, Field: key, Inner: err}
 			}
 
 			// Then set the map index.
@@ -296,7 +296,7 @@ func decodeMapObject(val Value, rt reflect.Value) error {
 		rt.Set(res)
 
 	default:
-		return fmt.Errorf("expected %s, got map", kindFromType(rt.Type()))
+		return TypeError{Value: val, Expected: kindFromType(rt.Type())}
 	}
 
 	return nil
