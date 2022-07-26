@@ -26,6 +26,14 @@ rules:
   - /metrics
   verbs:
   - get
+- apiGroups:
+  - security.openshift.io
+  resources:      
+  - securitycontextconstraints
+  verbs:          
+  - use
+  resourceNames:  
+  - hostmount-anyuid
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
