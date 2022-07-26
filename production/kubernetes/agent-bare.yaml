@@ -108,6 +108,7 @@ spec:
               fieldPath: spec.nodeName
         image: grafana/agent:v0.26.0
         imagePullPolicy: IfNotPresent
+        securityContext: {}
         name: grafana-agent
         ports:
         - containerPort: 80
