@@ -15,6 +15,10 @@ allocated to it. Even with proper sharding across multiple Prometheus instances,
 using Prometheus to send data to a cloud vendor can seem redundant: why pay for
 cloud storage if data is already stored locally?
 
+```Bash
+$ test
+```
+
 The Grafana Agent uses the same code as Prometheus, but tackles these issues
 by only using the most relevant parts of Prometheus for interaction with hosted
 metrics:
